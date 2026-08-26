@@ -1,0 +1,203 @@
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
+
+from .models import Complaint, ComplaintStatusHistory
+from .serializers import (
+    ComplaintDetailSerializer,
+    ComplaintListSerializer,
+    ComplaintStatusUpdateSerializer,
+    ComplaintSubmitSerializer,
+)
+from accounts.permissions import IsAdminUser
+from detection.detector import analyze_image
+from detection.sentiment import analyze_text
+from detection.urgency import calculate_urgency
+
+
+class ComplaintSubmitView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ComplaintSubmitSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        image_url = serializer.validated_data["image_url"]
+        description = serializer.validated_data["description"]
+        analysis = analyze_image(image_url)
+        sentiment = analyze_text(description)
+        urgency = calculate_urgency(analysis.get("detected_classes", []), sentiment)
+
+        with transaction.atomic():
+            complaint = Complaint.objects.create(
+                citizen=request.user,
+                image_url=image_url,
+                description=description,
+                latitude=serializer.validated_data["latitude"],
+                longitude=serializer.validated_data["longitude"],
+                address=serializer.validated_data.get("address", ""),
+                ward=serializer.validated_data.get("ward", ""),
+                landmark=serializer.validated_data.get("landmark"),
+                detected_classes=analysis.get("detected_classes", []),
+                confidence_scores=analysis.get("confidence_scores", {}),
+                annotated_image_url=None,
+                detection_raw=analysis,
+                sentiment=sentiment.get("sentiment", "neutral"),
+                sentiment_keywords=sentiment.get("keywords_found", []),
+                urgency_score=urgency.get("urgency_score", 0),
+                urgency_level=urgency.get("urgency_level", "low"),
+            )
+
+        return Response(
+            {
+                "complaint_id": complaint.complaint_id,
+                "detected_classes": complaint.detected_classes,
+                "confidence_scores": complaint.confidence_scores,
+                "sentiment": complaint.sentiment,
+                "urgency_score": complaint.urgency_score,
+                "urgency_level": complaint.urgency_level,
+                "analysis": analysis,
+                "sentiment_analysis": sentiment,
+                "urgency_analysis": urgency,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ComplaintListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        queryset = Complaint.objects.all()
+        status_filter = request.query_params.get("status")
+        urgency_filter = request.query_params.get("urgency_level")
+        ward_filter = request.query_params.get("ward")
+        detected_classes = request.query_params.get("detected_classes")
+        ordering = request.query_params.get("ordering")
+
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if urgency_filter:
+            queryset = queryset.filter(urgency_level=urgency_filter)
+        if ward_filter:
+            queryset = queryset.filter(ward__iexact=ward_filter)
+        if detected_classes:
+            queryset = queryset.filter(detected_classes__contains=[detected_classes])
+        if ordering in ["urgency_score", "submitted_at", "-urgency_score", "-submitted_at"]:
+            queryset = queryset.order_by(ordering)
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = ComplaintListSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+class ComplaintMapView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        complaints = Complaint.objects.all()
+        data = []
+        for complaint in complaints:
+            data.append(
+                {
+                    "id": str(complaint.id),
+                    "complaint_id": complaint.complaint_id,
+                    "latitude": complaint.latitude,
+                    "longitude": complaint.longitude,
+                    "lat": complaint.latitude,
+                    "lng": complaint.longitude,
+                    "address": complaint.address,
+                    "ward": complaint.ward,
+                    "description": complaint.description,
+                    "urgency_level": complaint.urgency_level,
+                    "urgency_score": complaint.urgency_score,
+                    "detected_classes": complaint.detected_classes,
+                    "status": complaint.status,
+                    "submitted_at": complaint.submitted_at,
+                }
+            )
+        return Response({"complaints": data, "results": data}, status=status.HTTP_200_OK)
+
+
+class ComplaintTrackView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        complaint_id = request.query_params.get("complaint_id")
+        phone = request.query_params.get("phone")
+        query = request.query_params.get("q")
+
+        if query and not complaint_id and not phone:
+            if query.upper().startswith("RSP-"):
+                complaint_id = query
+            else:
+                phone = query
+
+        if complaint_id:
+            complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+            serializer = ComplaintDetailSerializer(complaint)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        if phone:
+            complaints = Complaint.objects.filter(citizen__phone=phone)
+            serializer = ComplaintDetailSerializer(complaints, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(
+            {"detail": "Provide complaint_id or phone to track a complaint."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class MyComplaintsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        complaints = Complaint.objects.filter(citizen=request.user).order_by("-submitted_at")
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        page = paginator.paginate_queryset(complaints, request)
+        serializer = ComplaintListSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+class ComplaintDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, complaint_id):
+        complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+        serializer = ComplaintDetailSerializer(complaint)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ComplaintStatusUpdateView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def patch(self, request, complaint_id):
+        complaint = get_object_or_404(
+            Complaint.objects.filter(
+                Q(complaint_id=complaint_id) | Q(id=complaint_id)
+            )
+        )
+        serializer = ComplaintStatusUpdateSerializer(complaint, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        old_status = complaint.status
+        complaint = serializer.save()
+        ComplaintStatusHistory.objects.create(
+            complaint=complaint,
+            old_status=old_status,
+            new_status=complaint.status,
+            changed_by=request.user,
+            note=request.data.get("admin_notes", ""),
+        )
+        return Response(ComplaintDetailSerializer(complaint).data, status=status.HTTP_200_OK)

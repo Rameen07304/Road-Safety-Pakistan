@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans bg-[#eef6f0] text-gray-900;
+  }
+  * {
+    @apply box-border;
+  }
+}
+
+@layer components {
+
+  /* Urgency badges */
+  .badge-critical {
+    @apply bg-red-600 text-white text-xs
+           font-bold px-2 py-1 rounded-full
+           uppercase tracking-wide;
+  }
+  .badge-high {
+    @apply bg-orange-600 text-white text-xs
+           font-bold px-2 py-1 rounded-full
+           uppercase tracking-wide;
+  }
+  .badge-medium {
+    @apply bg-amber-500 text-white text-xs
+           font-bold px-2 py-1 rounded-full
+           uppercase tracking-wide;
+  }
+  .badge-low {
+    @apply bg-blue-500 text-white text-xs
+           font-bold px-2 py-1 rounded-full
+           uppercase tracking-wide;
+  }
+  .badge-resolved {
+    @apply bg-green-600 text-white text-xs
+           font-bold px-2 py-1 rounded-full
+           uppercase tracking-wide;
+  }
+
+  /* Buttons */
+  .btn-primary {
+      @apply bg-primary text-white font-semibold
+           px-6 py-3 rounded-lg
+        hover:bg-primary-light
+           transition-all duration-200
+           active:scale-95 cursor-pointer;
+  }
+  .btn-accent {
+    @apply bg-accent text-white font-semibold
+           px-6 py-3 rounded-lg
+           hover:bg-accent-dark
+           transition-all duration-200
+           active:scale-95 cursor-pointer;
+  }
+  .btn-outline {
+    @apply border-2 border-primary text-primary
+           font-semibold px-6 py-3 rounded-lg
+           hover:bg-primary hover:text-white
+           transition-all duration-200
+           cursor-pointer;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white font-semibold
+           px-6 py-3 rounded-lg
+           hover:bg-red-700
+           transition-all duration-200
+           active:scale-95 cursor-pointer;
+  }
+
+  /* Cards */
+  .card {
+      @apply bg-white rounded-xl shadow-sm
+        border border-green-100 p-6;
+  }
+  .card-hover {
+      @apply bg-white rounded-xl shadow-sm
+        border border-green-100 p-6
+           hover:shadow-md hover:-translate-y-0.5
+           transition-all duration-200;
+  }
+
+  /* Input fields */
+  .input-field {
+    @apply w-full border border-green-200
+           rounded-lg px-4 py-3 text-gray-900
+           focus:outline-none focus:ring-2
+           focus:ring-primary
+           focus:border-transparent
+           transition-all duration-200
+           bg-white;
+  }
+  .input-error {
+    @apply w-full border border-red-400
+           rounded-lg px-4 py-3 text-gray-900
+           focus:outline-none focus:ring-2
+           focus:ring-red-400
+           focus:border-transparent
+           bg-white;
+  }
+
+  /* Page container */
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 
+           sm:px-6 lg:px-8 py-8;
+  }
+
+  /* Section heading */
+  .section-heading {
+    @apply text-2xl font-bold text-gray-900
+           mb-6;
+  }
+}
+
+/* Leaflet map fixes */
+.leaflet-container {
+  z-index: 1;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Pulse animation for critical pins */
+@keyframes pulse-pin {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+.pin-critical {
+  animation: pulse-pin 1.5s infinite;
+}
+
+/* Page fade in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}

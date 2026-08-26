@@ -1,0 +1,144 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { api } from '../../services/api'
+import Header from '../../components/Header'
+import Footer from '../../components/Footer'
+import { Card, Badge, Button } from '../../components/UI'
+
+/* eslint-disable react-hooks/set-state-in-effect */
+
+export default function Dashboard() {
+  const [complaints, setComplaints] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('pending')
+  const [stats, setStats] = useState({ total: 0, pending: 0, resolved: 0, critical: 0 })
+  const navigate = useNavigate()
+
+  const fetchComplaints = async () => {
+    try {
+      const response = await api.get('/api/complaints/')
+      const data = response.data.results || response.data || []
+      setComplaints(data.sort((a, b) => b.urgency_score - a.urgency_score))
+      
+      setStats({
+        total: data.length,
+        pending: data.filter(c => c.status !== 'resolved').length,
+        resolved: data.filter(c => c.status === 'resolved').length,
+        critical: data.filter(c => c.urgency_level === 'critical').length,
+      })
+    } catch (err) {
+      console.error('Failed to fetch complaints:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchComplaints()
+  }, [])
+
+  const filteredComplaints = complaints.filter(c => {
+    if (filter === 'pending') return c.status !== 'resolved'
+    if (filter === 'critical') return c.urgency_level === 'critical'
+    return true
+  })
+
+  return (
+    <>
+      <Header />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <h1 className="text-4xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
+
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-4 gap-4 mb-8">
+          <Card className="text-center">
+            <div className="text-4xl font-bold text-green-600 mb-2">{stats.total}</div>
+            <div className="text-gray-600">Total Complaints</div>
+          </Card>
+          <Card className="text-center">
+            <div className="text-4xl font-bold text-orange-600 mb-2">{stats.pending}</div>
+            <div className="text-gray-600">Pending</div>
+          </Card>
+          <Card className="text-center">
+            <div className="text-4xl font-bold text-blue-600 mb-2">{stats.resolved}</div>
+            <div className="text-gray-600">Resolved</div>
+          </Card>
+          <Card className="text-center">
+            <div className="text-4xl font-bold text-red-600 mb-2">{stats.critical}</div>
+            <div className="text-gray-600">Critical</div>
+          </Card>
+        </div>
+
+        {/* Filter */}
+        <div className="flex gap-2 mb-6">
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'pending', label: 'Pending' },
+            { id: 'critical', label: 'Critical' },
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-4 py-2 rounded-lg font-semibold transition ${
+                filter === f.id ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Complaints Table */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          </div>
+        ) : (
+          <Card className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-4 font-bold">ID</th>
+                  <th className="text-left p-4 font-bold">Location</th>
+                  <th className="text-left p-4 font-bold">Hazard</th>
+                  <th className="text-left p-4 font-bold">Urgency</th>
+                  <th className="text-left p-4 font-bold">Status</th>
+                  <th className="text-left p-4 font-bold">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredComplaints.map(complaint => (
+                  <tr key={complaint.complaint_id} className="border-b hover:bg-gray-50">
+                    <td className="p-4 font-semibold">{complaint.complaint_id}</td>
+                    <td className="p-4">{complaint.ward}</td>
+                    <td className="p-4">{complaint.detected_classes?.join(', ') || 'N/A'}</td>
+                    <td className="p-4">
+                      <Badge variant={complaint.urgency_level?.toLowerCase()}>
+                        {complaint.urgency_level} ({complaint.urgency_score})
+                      </Badge>
+                    </td>
+                    <td className="p-4">
+                      <Badge variant={complaint.status === 'resolved' ? 'success' : 'warning'}>
+                        {complaint.status}
+                      </Badge>
+                    </td>
+                    <td className="p-4">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => navigate(`/admin/complaint/${complaint.complaint_id}`)}
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
+      </div>
+      <Footer />
+    </>
+  )
+}
