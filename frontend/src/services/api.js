@@ -75,6 +75,11 @@ export const authService = {
 export const complaintService = {
   submit: (data) => 
     API.post('/api/complaints/submit/', data),
+  uploadImage: (formData, onUploadProgress) =>
+    API.post('/api/complaints/upload-image/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+    }),
   list: (params) => 
     API.get('/api/complaints/', { params }),
   getMap: () => 

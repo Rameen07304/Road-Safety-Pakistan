@@ -1,7 +1,10 @@
+from PIL import Image, UnidentifiedImageError
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+import cloudinary.uploader
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
@@ -31,6 +34,17 @@ class ComplaintSubmitView(APIView):
         image_url = serializer.validated_data["image_url"]
         description = serializer.validated_data["description"]
         analysis = analyze_image(image_url)
+        annotated_image_url = None
+        annotated_image_base64 = analysis.get("annotated_image_base64")
+        if annotated_image_base64:
+            annotated_upload = cloudinary.uploader.upload(
+                f"data:image/jpeg;base64,{annotated_image_base64}",
+                folder="complaints/annotated",
+                resource_type="image",
+            )
+            annotated_image_url = (
+                annotated_upload.get("secure_url") or annotated_upload.get("url")
+            )
         sentiment = analyze_text(description)
         urgency = calculate_urgency(analysis.get("detected_classes", []), sentiment)
 
@@ -46,7 +60,7 @@ class ComplaintSubmitView(APIView):
                 landmark=serializer.validated_data.get("landmark"),
                 detected_classes=analysis.get("detected_classes", []),
                 confidence_scores=analysis.get("confidence_scores", {}),
-                annotated_image_url=None,
+                annotated_image_url=annotated_image_url,
                 detection_raw=analysis,
                 sentiment=sentiment.get("sentiment", "neutral"),
                 sentiment_keywords=sentiment.get("keywords_found", []),
@@ -68,6 +82,33 @@ class ComplaintSubmitView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class UploadImageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        file = request.FILES.get('image')
+        if not file:
+            return Response({'detail': 'No image file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate size (max 10MB)
+        if file.size > 10 * 1024 * 1024:
+            return Response({'detail': 'File too large. Max size is 10MB.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            image = Image.open(file)
+            image.verify()
+            file.seek(0)
+            res = cloudinary.uploader.upload(file, folder='complaints')
+            url = res.get('secure_url') or res.get('url')
+            if not url:
+                return Response({'detail': 'Image upload returned no URL.'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({'image_url': url}, status=status.HTTP_201_CREATED)
+        except UnidentifiedImageError:
+            return Response({'detail': 'The uploaded file is not a valid image.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response({'detail': 'Failed to upload image.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ComplaintListView(APIView):

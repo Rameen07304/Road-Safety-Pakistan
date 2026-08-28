@@ -151,11 +151,28 @@ export default function TrackComplaint() {
                 <p className="text-gray-700">{complaint.description}</p>
               </div>
 
-              {/* Image */}
-              {complaint.image_url && (
+              {/* Image comparison */}
+              {(complaint.image_url || complaint.annotated_image_url || complaint.annotated_image_base64) && (
                 <div>
-                  <h3 className="font-bold text-gray-900 mb-2">Submitted Photo</h3>
-                  <img src={complaint.image_url} alt="Complaint" className="max-w-md max-h-64 rounded-lg" />
+                  <h3 className="font-bold text-gray-900 mb-2">Image Comparison</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {complaint.image_url && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">Original photo</p>
+                        <img src={complaint.image_url} alt="Original complaint" className="w-full max-h-64 object-contain rounded-lg" />
+                      </div>
+                    )}
+                    {(complaint.annotated_image_url || complaint.annotated_image_base64) && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">AI annotated photo</p>
+                        <img
+                          src={complaint.annotated_image_url || `data:image/jpeg;base64,${complaint.annotated_image_base64}`}
+                          alt="AI detection annotations"
+                          className="w-full max-h-64 object-contain rounded-lg"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

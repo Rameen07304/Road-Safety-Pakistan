@@ -94,10 +94,27 @@ export default function ComplaintDetail() {
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             {/* Photo */}
-            {complaint.image_url && (
+            {(complaint.image_url || complaint.annotated_image_url || complaint.annotated_image_base64) && (
               <Card>
-                <h3 className="font-bold text-gray-900 mb-4">Submitted Photo</h3>
-                <img src={complaint.image_url} alt="Complaint" className="max-w-full max-h-96 rounded-lg" />
+                <h3 className="font-bold text-gray-900 mb-4">Image Comparison</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {complaint.image_url && (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">Original photo</p>
+                      <img src={complaint.image_url} alt="Original complaint" className="w-full max-h-96 object-contain rounded-lg" />
+                    </div>
+                  )}
+                  {(complaint.annotated_image_url || complaint.annotated_image_base64) && (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">AI annotated photo</p>
+                      <img
+                        src={complaint.annotated_image_url || `data:image/jpeg;base64,${complaint.annotated_image_base64}`}
+                        alt="AI detection annotations"
+                        className="w-full max-h-96 object-contain rounded-lg"
+                      />
+                    </div>
+                  )}
+                </div>
               </Card>
             )}
 
@@ -112,7 +129,7 @@ export default function ComplaintDetail() {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Confidence Scores</p>
                   <p className="text-gray-900 font-semibold">
-                    {Object.entries(complaint.confidence_scores || {}).map(([k, v]) => `${k}: ${(v*100).toFixed(1)}%`).join(', ')}
+                    {Object.entries(complaint.confidence_scores || {}).map(([k, v]) => `${k}: ${(Number(v) * 100).toFixed(1)}%`).join(', ') || 'N/A'}
                   </p>
                 </div>
               </div>

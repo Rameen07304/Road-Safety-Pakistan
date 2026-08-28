@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../services/api'
+import { api, complaintService } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Button, Alert, Card } from '../../components/UI'
@@ -33,6 +33,8 @@ export default function ReportHazard() {
     landmark: '',
   })
   const [imagePreview, setImagePreview] = useState('')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -52,9 +54,9 @@ export default function ReportHazard() {
     const reader = new FileReader()
     reader.onload = (event) => {
       setImagePreview(event.target.result)
-      setFormData(prev => ({ ...prev, image_url: event.target.result }))
     }
     reader.readAsDataURL(file)
+    setSelectedFile(file)
     setError('')
     setStep(2)
   }
@@ -87,8 +89,27 @@ export default function ReportHazard() {
     setLoading(true)
 
     try {
+      if (!selectedFile && !formData.image_url) {
+        throw new Error('Please select a photo before submitting.')
+      }
+      if (!formData.description.trim()) {
+        throw new Error('Please describe the hazard before submitting.')
+      }
+
+      let imageUrl = formData.image_url
+
+      if (selectedFile) {
+        const fd = new FormData()
+        fd.append('image', selectedFile)
+        const uploadRes = await complaintService.uploadImage(fd, (progressEvent) => {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          setUploadProgress(percent)
+        })
+        imageUrl = uploadRes.data.image_url
+      }
+
       const response = await api.post('/api/complaints/submit/', {
-        image_url: formData.image_url,
+        image_url: imageUrl,
         description: formData.description,
         latitude: formData.latitude,
         longitude: formData.longitude,
@@ -104,11 +125,16 @@ export default function ReportHazard() {
         navigate(`/track?id=${response.data.complaint_id}`)
       }, 1500)
     } catch (err) {
-      const message = err.response?.data?.detail || 'Failed to submit complaint. Try again.'
+      const responseData = err.response?.data
+      const validationMessage = responseData && typeof responseData === 'object'
+        ? Object.entries(responseData).map(([field, messages]) => `${field}: ${[].concat(messages).join(', ')}`).join(' ')
+        : ''
+      const message = responseData?.detail || validationMessage || err.message || 'Failed to submit complaint. Try again.'
       setError(message)
       setToast({ message, type: 'error' })
     } finally {
       setLoading(false)
+      setUploadProgress(0)
     }
   }
 
@@ -206,6 +232,14 @@ export default function ReportHazard() {
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Step 4: Review & Submit</h2>
                 {imagePreview && <img src={imagePreview} alt="Review" className="max-w-xs max-h-48 rounded-lg mb-4" />}
                 <p className="text-gray-900 mb-4">{formData.description}</p>
+                {uploadProgress > 0 && (
+                  <div className="mb-4">
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div className="bg-green-600 h-3" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">Uploading image: {uploadProgress}%</p>
+                  </div>
+                )}
                 <div className="flex gap-4">
                   <Button variant="secondary" className="flex-1" onClick={() => setStep(3)}>← Back</Button>
                   <Button className="flex-1" loading={loading} onClick={handleSubmit}>✓ Submit</Button>

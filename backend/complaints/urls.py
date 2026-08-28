@@ -6,6 +6,7 @@ from .views import (
     ComplaintTrackView,
     MyComplaintsView,
     ComplaintDetailView,
+     UploadImageView,
 )
 
 app_name = 'complaints'
@@ -13,6 +14,7 @@ app_name = 'complaints'
 urlpatterns = [
     path('submit/', ComplaintSubmitView.as_view(), 
          name='complaint-submit'),
+     path('upload-image/', UploadImageView.as_view(), name='complaint-upload-image'),
     path('', ComplaintListView.as_view(), 
          name='complaint-list'),
     path('map/', ComplaintMapView.as_view(), 

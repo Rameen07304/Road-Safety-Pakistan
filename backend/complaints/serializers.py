@@ -78,6 +78,7 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
     status_history = StatusHistorySerializer(many=True, read_only=True)
     citizen_name = serializers.SerializerMethodField()
     resolution_time_days = serializers.SerializerMethodField()
+    annotated_image_base64 = serializers.SerializerMethodField()
 
     class Meta:
         model = Complaint
@@ -94,6 +95,7 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             "detected_classes",
             "confidence_scores",
             "annotated_image_url",
+            "annotated_image_base64",
             "detection_raw",
             "sentiment",
             "sentiment_keywords",
@@ -113,6 +115,11 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
 
     def get_citizen_name(self, obj):
         return obj.citizen.full_name if obj.citizen else None
+
+    def get_annotated_image_base64(self, obj):
+        if not isinstance(obj.detection_raw, dict):
+            return None
+        return obj.detection_raw.get("annotated_image_base64")
 
     def get_resolution_time_days(self, obj):
         return obj.resolution_time_days
