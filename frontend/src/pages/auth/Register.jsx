@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
@@ -27,6 +28,7 @@ export default function Register() {
   const [toast, setToast] = useState(null)
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { t } = useLanguage()
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -185,8 +187,8 @@ export default function Register() {
           <main className="px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
             <div className="mx-auto max-w-xl">
               <div className="mb-8 text-center lg:text-left">
-                <h2 className="text-3xl font-black text-[#173b2b] sm:text-4xl">Naya Account Banayein</h2>
-                <p className="mt-2 text-sm text-[#6b7c73]">Join the community-led initiative for safer roads.</p>
+                <h2 className="text-3xl font-black text-[#173b2b] sm:text-4xl">{t('register_title')}</h2>
+                <p className="mt-2 text-sm text-[#6b7c73]">{t('register_subtitle')}</p>
               </div>
 
               {error && <Alert message={error} type="error" className="mb-5" />}
@@ -380,14 +382,14 @@ export default function Register() {
                   className="mt-2 w-full !rounded-none !bg-[#e07c12] !py-3 text-base font-bold uppercase tracking-wide hover:!bg-[#c46a10]"
                   loading={loading}
                 >
-                  {loading ? 'Creating account...' : 'Create Account'}
+                  {loading ? t('register_submit_loading') : t('register_submit')}
                 </Button>
               </form>
 
               <div className="mt-5 text-center text-sm text-[#596a61]">
-                Already have an account?{' '}
+                {t('register_already_have')}{' '}
                 <Link to="/login" className="font-semibold text-[#1f5b43] hover:text-[#154430]">
-                  Login
+                  {t('nav_login')}
                 </Link>
               </div>
 

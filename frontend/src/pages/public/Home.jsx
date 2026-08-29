@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card } from '../../components/UI'
@@ -36,6 +37,7 @@ const heroIllustration = encodeURIComponent(`
 
 export default function Home() {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [stats, setStats] = useState({
     totalComplaints: 0,
     resolvedComplaints: 0,
@@ -75,23 +77,23 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-5xl font-bold mb-6">
-                Make Our Roads Safer, Together.
+                {t('home_hero_title')}
               </h1>
               <p className="text-xl text-green-100 mb-8">
-                Road Safety Pakistan uses AI to detect hazards and empower citizens to report dangerous road conditions instantly. Track every complaint. Hold authorities accountable.
+                {t('home_hero_subtitle')}
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/map" className="bg-white text-green-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition">
-                  View Live Map
+                  {t('home_view_live_map')}
                 </Link>
                 {!user && (
                   <Link to="/register" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-green-600 transition">
-                    Report Now
+                    {t('home_report_now')}
                   </Link>
                 )}
                 {user && user.role === 'citizen' && (
                   <Link to="/report" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-green-600 transition">
-                    Report Now
+                    {t('home_report_now')}
                   </Link>
                 )}
               </div>
@@ -112,23 +114,23 @@ export default function Home() {
       {/* Stats Section */}
       <section className="bg-gray-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">Our Impact</h2>
+          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">{t('home_our_impact')}</h2>
           <div className="grid md:grid-cols-4 gap-8">
             <Card className="text-center">
               <div className="text-4xl font-bold text-green-600 mb-2">{stats.totalComplaints}</div>
-              <div className="text-gray-600">Total Complaints</div>
+              <div className="text-gray-600">{t('home_total_complaints')}</div>
             </Card>
             <Card className="text-center">
               <div className="text-4xl font-bold text-blue-600 mb-2">{stats.resolvedComplaints}</div>
-              <div className="text-gray-600">Resolved</div>
+              <div className="text-gray-600">{t('home_resolved')}</div>
             </Card>
             <Card className="text-center">
               <div className="text-4xl font-bold text-orange-600 mb-2">{stats.pendingComplaints}</div>
-              <div className="text-gray-600">Pending</div>
+              <div className="text-gray-600">{t('home_pending')}</div>
             </Card>
             <Card className="text-center">
               <div className="text-4xl font-bold text-purple-600 mb-2">{stats.avgResolutionTime}</div>
-              <div className="text-gray-600">Avg. Resolution</div>
+              <div className="text-gray-600">{t('home_avg_resolution')}</div>
             </Card>
           </div>
         </div>
@@ -137,7 +139,7 @@ export default function Home() {
       {/* Features Section */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">Key Features</h2>
+          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">{t('home_key_features')}</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <Card>
               <div className="text-5xl mb-4">📸</div>
@@ -176,7 +178,7 @@ export default function Home() {
       {/* How It Works */}
       <section className="bg-gray-50 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">How It Works</h2>
+          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">{t('home_how_it_works')}</h2>
           <div className="grid md:grid-cols-3 gap-8 mb-12">
             <div className="text-center">
               <div className="bg-green-600 text-white text-3xl font-bold rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
@@ -237,22 +239,22 @@ export default function Home() {
       {/* CTA Section */}
       <section className="bg-green-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold mb-6">Ready to Make a Difference?</h2>
+          <h2 className="text-4xl font-bold mb-6">{t('home_ready_title')}</h2>
           <p className="text-xl text-green-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of citizens helping make Lahore's roads safer. Report hazards, track progress, and hold authorities accountable.
+            {t('home_ready_subtitle')}
           </p>
           {!user ? (
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/register" className="bg-white text-green-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition">
-                Register Now
+                {t('home_register_now')}
               </Link>
               <Link to="/login" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-green-600 transition">
-                Login
+                {t('nav_login')}
               </Link>
             </div>
           ) : user.role === 'citizen' ? (
             <Link to="/report" className="inline-block bg-white text-green-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition">
-              Report a Hazard
+              {t('home_report_a_hazard')}
             </Link>
           ) : null}
         </div>

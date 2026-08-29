@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Complaint, ComplaintStatusHistory
+from .models import Complaint, ComplaintStatusHistory, ComplaintUpvote
 
 
 @admin.register(Complaint)
@@ -22,3 +22,9 @@ class ComplaintAdmin(admin.ModelAdmin):
 class ComplaintStatusHistoryAdmin(admin.ModelAdmin):
     list_display = ("complaint", "old_status", "new_status", "changed_by", "changed_at")
     ordering = ("-changed_at",)
+
+
+@admin.register(ComplaintUpvote)
+class ComplaintUpvoteAdmin(admin.ModelAdmin):
+    list_display = ("complaint", "user", "created_at")
+    ordering = ("-created_at",)

@@ -86,15 +86,21 @@ export const complaintService = {
     API.get('/api/complaints/map/'),
   track: (params) => 
     API.get('/api/complaints/track/', { params }),
-  myComplaints: () => 
+  myComplaints: () =>
     API.get('/api/complaints/my/'),
-  getDetail: (id) => 
+  myDashboard: () =>
+    API.get('/api/complaints/my-dashboard/'),
+  getDetail: (id) =>
     API.get(`/api/complaints/${id}/`),
-  updateStatus: (id, data) => 
+  updateStatus: (id, data) =>
     API.patch(
       `/api/admin/complaints/${id}/status/`,
       data
     ),
+  upvote: (id) =>
+    API.post(`/api/complaints/${id}/upvote/`),
+  removeUpvote: (id) =>
+    API.delete(`/api/complaints/${id}/upvote/`),
 }
 
 // Detection service functions
@@ -111,9 +117,14 @@ export const analyticsService = {
     API.get('/api/analytics/wards/'),
   getHazards: () => 
     API.get('/api/analytics/hazards/'),
-  getTrends: (days = 30) => 
-    API.get('/api/analytics/trends/', 
+  getTrends: (days = 30) =>
+    API.get('/api/analytics/trends/',
       { params: { days } }),
+  exportPdfReport: (params) =>
+    API.get('/api/analytics/report/pdf/', {
+      params,
+      responseType: 'blob',
+    }),
 }
 
 export default API

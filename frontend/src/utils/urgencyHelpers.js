@@ -12,7 +12,7 @@ export const urgencyColors = {
   critical: '#DC2626',
   high:     '#EA580C',
   medium:   '#D97706',
-  low:      '#3B82F6',
+  low:      '#16A34A',
   resolved: '#16A34A',
 }
 

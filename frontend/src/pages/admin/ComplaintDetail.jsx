@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { api } from '../../services/api'
+import { api, complaintService } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge, Button, Alert } from '../../components/UI'
@@ -18,6 +18,11 @@ export default function ComplaintDetail() {
   const [toast, setToast] = useState(null)
   const [status, setStatus] = useState('')
   const [notes, setNotes] = useState('')
+  const [resolvedFile, setResolvedFile] = useState(null)
+  const [resolvedPreview, setResolvedPreview] = useState('')
+  const [uploadingResolved, setUploadingResolved] = useState(false)
+  const [resolvedUploadError, setResolvedUploadError] = useState('')
+  const resolvedFileInputRef = useRef(null)
 
   const fetchComplaint = async () => {
     try {
@@ -36,14 +41,62 @@ export default function ComplaintDetail() {
     fetchComplaint()
   }, [id])
 
+  const handleResolvedFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setResolvedUploadError('')
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setResolvedUploadError('Please select a JPG, PNG, or WEBP image.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setResolvedUploadError('File too large. Max size is 10MB.')
+      return
+    }
+
+    setResolvedFile(file)
+    const reader = new FileReader()
+    reader.onload = (event) => setResolvedPreview(event.target.result)
+    reader.readAsDataURL(file)
+  }
+
   const handleUpdate = async () => {
     setUpdating(true)
+    setResolvedUploadError('')
     try {
-      const response = await api.patch(`/api/admin/complaints/${id}/status/`, {
-        status,
-        admin_notes: notes,
-      })
+      let resolvedImageUrl = complaint.resolved_image_url
+
+      if (status === 'resolved' && resolvedFile) {
+        setUploadingResolved(true)
+        const fd = new FormData()
+        fd.append('image', resolvedFile)
+        try {
+          const uploadRes = await complaintService.uploadImage(fd)
+          resolvedImageUrl = uploadRes.data.image_url
+        } catch (uploadErr) {
+          const message = uploadErr.response?.data?.detail || 'Failed to upload the after photo. Status was not changed.'
+          setResolvedUploadError(message)
+          setToast({ message, type: 'error' })
+          setUpdating(false)
+          setUploadingResolved(false)
+          return
+        } finally {
+          setUploadingResolved(false)
+        }
+      }
+
+      const payload = { status, admin_notes: notes }
+      if (status === 'resolved' && resolvedImageUrl) {
+        payload.resolved_image_url = resolvedImageUrl
+      }
+
+      const response = await api.patch(`/api/admin/complaints/${id}/status/`, payload)
       setComplaint(response.data)
+      setResolvedFile(null)
+      setResolvedPreview('')
       setToast({ message: 'Complaint updated successfully!', type: 'success' })
     } catch {
       setError('Failed to update complaint')
@@ -169,7 +222,7 @@ export default function ComplaintDetail() {
                 </div>
                 <div className="md:col-span-2">
                   <p className="text-sm text-gray-600 mb-1">Coordinates</p>
-                  <p className="text-gray-900">{complaint.latitude?.toFixed(4)}, {complaint.longitude?.toFixed(4)}</p>
+                  <p className="text-gray-900">{Number(complaint.latitude).toFixed(4)}, {Number(complaint.longitude).toFixed(4)}</p>
                 </div>
               </div>
             </Card>
@@ -202,7 +255,48 @@ export default function ComplaintDetail() {
                 <option value="resolved">Resolved</option>
                 <option value="rejected">Rejected</option>
               </select>
-              
+
+              {status === 'resolved' && (
+                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
+                  <p className="text-sm font-semibold text-gray-800 mb-2">
+                    Upload an "after" photo showing the resolved hazard
+                  </p>
+                  {complaint.resolved_image_url && !resolvedPreview && (
+                    <div className="mb-2">
+                      <p className="text-xs text-gray-600 mb-1">Current after photo:</p>
+                      <img src={complaint.resolved_image_url} alt="Current resolved" className="h-24 rounded-lg object-cover" />
+                    </div>
+                  )}
+                  {resolvedPreview ? (
+                    <div className="mb-2">
+                      <img src={resolvedPreview} alt="After preview" className="h-24 rounded-lg object-cover" />
+                      <p className="mt-1 text-xs text-green-700 font-semibold">✓ Photo selected</p>
+                    </div>
+                  ) : (
+                    <div
+                      className="cursor-pointer rounded-lg border-2 border-dashed border-green-300 p-4 text-center text-sm text-gray-600 hover:border-green-500"
+                      onClick={() => resolvedFileInputRef.current?.click()}
+                    >
+                      📷 Click to select after photo
+                    </div>
+                  )}
+                  <input
+                    ref={resolvedFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleResolvedFileChange}
+                    className="hidden"
+                  />
+                  {resolvedUploadError && (
+                    <p className="mt-2 text-xs text-red-600">{resolvedUploadError}</p>
+                  )}
+                  {uploadingResolved && (
+                    <p className="mt-2 text-xs text-gray-600">Uploading after photo...</p>
+                  )}
+                  <p className="mt-2 text-xs text-gray-500">Optional, but recommended when marking a complaint resolved.</p>
+                </div>
+              )}
+
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -210,9 +304,9 @@ export default function ComplaintDetail() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none mb-4"
                 rows="4"
               ></textarea>
-              
+
               <Button className="w-full" loading={updating} onClick={handleUpdate}>
-                Save Changes
+                {uploadingResolved ? 'Uploading Photo...' : 'Save Changes'}
               </Button>
             </Card>
 

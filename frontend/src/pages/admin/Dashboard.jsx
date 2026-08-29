@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../services/api'
+import { api, analyticsService } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
-import { Card, Badge, Button } from '../../components/UI'
+import { Card, Badge, Button, Alert } from '../../components/UI'
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
@@ -12,6 +12,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('pending')
   const [stats, setStats] = useState({ total: 0, pending: 0, resolved: 0, critical: 0 })
+  const [reportStartDate, setReportStartDate] = useState('')
+  const [reportEndDate, setReportEndDate] = useState('')
+  const [exportingReport, setExportingReport] = useState(false)
+  const [exportError, setExportError] = useState('')
   const navigate = useNavigate()
 
   const fetchComplaints = async () => {
@@ -37,6 +41,32 @@ export default function Dashboard() {
     fetchComplaints()
   }, [])
 
+  const handleExportReport = async () => {
+    setExportError('')
+    setExportingReport(true)
+    try {
+      const params = {}
+      if (reportStartDate) params.start_date = reportStartDate
+      if (reportEndDate) params.end_date = reportEndDate
+
+      const response = await analyticsService.exportPdfReport(params)
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'road_safety_report.pdf'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Failed to export PDF report:', err)
+      setExportError('Failed to generate the report. Please try again.')
+    } finally {
+      setExportingReport(false)
+    }
+  }
+
   const filteredComplaints = complaints.filter(c => {
     if (filter === 'pending') return c.status !== 'resolved'
     if (filter === 'critical') return c.urgency_level === 'critical'
@@ -47,7 +77,36 @@ export default function Dashboard() {
     <>
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8">
+          <h1 className="text-4xl font-bold text-gray-900">Admin Dashboard</h1>
+
+          <Card className="w-full lg:w-auto">
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={reportStartDate}
+                  onChange={(e) => setReportStartDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={reportEndDate}
+                  onChange={(e) => setReportEndDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <Button loading={exportingReport} onClick={handleExportReport}>
+                {exportingReport ? 'Generating report...' : '📄 Export PDF Report'}
+              </Button>
+            </div>
+            {exportError && <Alert message={exportError} type="error" className="mt-3" />}
+          </Card>
+        </div>
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">

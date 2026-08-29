@@ -46,6 +46,7 @@ class Complaint(models.Model):
     detected_classes = models.JSONField(default=list)
     confidence_scores = models.JSONField(default=dict)
     annotated_image_url = models.TextField(blank=True, null=True)
+    resolved_image_url = models.TextField(blank=True, null=True)
     detection_raw = models.JSONField(default=dict)
 
     sentiment = models.CharField(max_length=20, choices=SENTIMENT_CHOICES, default="neutral")
@@ -67,6 +68,8 @@ class Complaint(models.Model):
     resolved_at = models.DateTimeField(null=True, blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    upvotes = models.IntegerField(default=0)
 
     class Meta:
         ordering = ["-submitted_at"]
@@ -112,3 +115,25 @@ class ComplaintStatusHistory(models.Model):
 
     class Meta:
         ordering = ["changed_at"]
+
+
+class ComplaintUpvote(models.Model):
+    complaint = models.ForeignKey(
+        Complaint,
+        on_delete=models.CASCADE,
+        related_name="upvote_records",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="complaint_upvotes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["complaint", "user"], name="unique_complaint_upvote_per_user"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} upvoted {self.complaint.complaint_id}"

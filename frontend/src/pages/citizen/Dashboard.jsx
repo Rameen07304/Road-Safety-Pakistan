@@ -1,0 +1,167 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import { api } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
+import Header from '../../components/Header'
+import Footer from '../../components/Footer'
+import { Card, Badge, Button } from '../../components/UI'
+import { urgencyColors, statusLabels, statusClasses, formatDate } from '../../utils/urgencyHelpers'
+import 'leaflet/dist/leaflet.css'
+
+const markerIcon = (urgencyLevel) => {
+  const color = urgencyColors[urgencyLevel?.toLowerCase()] || '#2563eb'
+  return L.divIcon({
+    className: '',
+    html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35)"></span>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+    popupAnchor: [0, -9],
+  })
+}
+
+function StatCard({ label, value, accent }) {
+  return (
+    <Card className="text-center">
+      <div className={`text-4xl font-black ${accent}`}>{value}</div>
+      <div className="mt-1 text-sm font-semibold text-gray-600">{label}</div>
+    </Card>
+  )
+}
+
+export default function Dashboard() {
+  const { user } = useAuth()
+  const { t } = useLanguage()
+  const navigate = useNavigate()
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const response = await api.get('/api/complaints/my-dashboard/')
+        setData(response.data)
+      } catch (err) {
+        console.error('Failed to fetch dashboard:', err)
+        setError('Failed to load your dashboard. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDashboard()
+  }, [])
+
+  const stats = data?.stats
+  const recent = data?.most_recent_complaint
+  const locations = (data?.locations || []).filter((loc) => loc.latitude != null && loc.longitude != null)
+  const mapCenter = locations.length
+    ? [Number(locations[0].latitude), Number(locations[0].longitude)]
+    : [31.5204, 74.3587]
+
+  return (
+    <>
+      <Header />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('dash_title')}</h1>
+          <p className="text-gray-600">{t('dash_welcome')}{user?.full_name ? `, ${user.full_name}` : ''}. {t('dash_overview')}</p>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center h-96">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          </div>
+        ) : error ? (
+          <Card className="text-center py-12">
+            <p className="text-red-600 font-semibold">{error}</p>
+          </Card>
+        ) : (
+          <div className="space-y-8">
+            {/* Statistics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard label={t('dash_total_submitted')} value={stats.total} accent="text-gray-900" />
+              <StatCard label={t('dash_resolved')} value={stats.resolved} accent="text-green-600" />
+              <StatCard label={t('dash_in_progress')} value={stats.in_progress} accent="text-amber-600" />
+              <StatCard label={t('dash_pending')} value={stats.pending} accent="text-blue-600" />
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Most recent complaint */}
+              <Card>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">{t('dash_most_recent')}</h2>
+                {recent ? (
+                  <div
+                    className="cursor-pointer rounded-lg border border-gray-200 p-4 hover:shadow-md transition"
+                    onClick={() => navigate(`/complaint/${recent.complaint_id}`)}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-bold text-gray-900">{recent.complaint_id}</h3>
+                      <Badge variant={recent.urgency_level?.toLowerCase()}>
+                        {recent.urgency_level} ({recent.urgency_score}/100)
+                      </Badge>
+                    </div>
+                    <p className="text-gray-700 mb-3 line-clamp-2">
+                      {recent.detected_classes?.join(', ') || 'Hazard report'}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                      <span>Filed: {formatDate(recent.submitted_at)}</span>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${statusClasses[recent.status] || 'bg-gray-100 text-gray-800'}`}>
+                        {statusLabels[recent.status] || recent.status}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-5xl mb-3">📭</div>
+                    <p className="text-gray-600 mb-4">{t('dash_no_complaints')}</p>
+                    <Button onClick={() => navigate('/report')}>{t('dash_report_first')}</Button>
+                  </div>
+                )}
+              </Card>
+
+              {/* Personal complaint map */}
+              <Card className="p-0 overflow-hidden">
+                <div className="p-6 pb-0">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">{t('dash_my_locations')}</h2>
+                </div>
+                {locations.length ? (
+                  <div className="h-80">
+                    <MapContainer center={mapCenter} zoom={12} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; OpenStreetMap contributors'
+                      />
+                      {locations.map((loc) => (
+                        <Marker
+                          key={loc.complaint_id}
+                          position={[Number(loc.latitude), Number(loc.longitude)]}
+                          icon={markerIcon(loc.urgency_level)}
+                        >
+                          <Popup>
+                            <div className="text-sm">
+                              <p className="font-bold">{loc.complaint_id}</p>
+                              <p>{statusLabels[loc.status] || loc.status}</p>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      ))}
+                    </MapContainer>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-80 px-6 text-center">
+                    <div className="text-5xl mb-3">🗺️</div>
+                    <p className="text-gray-600">{t('dash_no_locations')}</p>
+                  </div>
+                )}
+              </Card>
+            </div>
+          </div>
+        )}
+      </div>
+      <Footer />
+    </>
+  )
+}

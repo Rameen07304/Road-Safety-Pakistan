@@ -4,6 +4,7 @@ import { api } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge, Button } from '../../components/UI'
+import UpvoteButton from '../../components/UpvoteButton'
 
 export default function MyComplaints() {
   const [complaints, setComplaints] = useState([])
@@ -92,10 +93,17 @@ export default function MyComplaints() {
                       <span>AI: {complaint.detected_classes?.join(', ') || 'Analyzing...'}</span>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="flex flex-col items-end gap-2">
                     <Badge variant={complaint.status === 'resolved' ? 'success' : 'warning'}>
                       {complaint.status.toUpperCase()}
                     </Badge>
+                    <UpvoteButton
+                      complaintId={complaint.complaint_id}
+                      upvotes={complaint.upvotes || 0}
+                      hasUpvoted={!!complaint.has_upvoted}
+                      size="sm"
+                      onChange={(next) => setComplaints((prev) => prev.map((c) => c.complaint_id === complaint.complaint_id ? { ...c, upvotes: next.upvotes, has_upvoted: next.hasUpvoted } : c))}
+                    />
                   </div>
                 </div>
               </Card>

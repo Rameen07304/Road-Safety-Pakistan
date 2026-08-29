@@ -1,9 +1,11 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import { useState } from 'react'
 
 export default function Header() {
   const { user, logout, loading } = useAuth()
+  const { t, toggleLanguage, isUrdu } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -24,20 +26,20 @@ export default function Header() {
             <span className="text-white font-bold text-lg">🛣️</span>
           </div>
           <span className="font-bold text-lg text-gray-900 hidden sm:block">
-            Road Safety Pakistan
+            {t('app_name')}
           </span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
           <Link to="/" className={`${isActive('/')} pb-1`}>
-            Home
+            {t('nav_home')}
           </Link>
           <Link to="/map" className={`${isActive('/map')} pb-1`}>
-            Map
+            {t('nav_map')}
           </Link>
           <Link to="/track" className={`${isActive('/track')} pb-1`}>
-            Track
+            {t('nav_track')}
           </Link>
           {/* AI Demo link removed per user request */}
 
@@ -48,20 +50,23 @@ export default function Header() {
                   {user.role === 'citizen' && (
                     <>
                       <Link to="/report" className={`${isActive('/report')} pb-1`}>
-                        Report
+                        {t('nav_report')}
                       </Link>
                       <Link to="/my-complaints" className={`${isActive('/my-complaints')} pb-1`}>
-                        My Issues
+                        {t('nav_my_issues')}
+                      </Link>
+                      <Link to="/dashboard" className={`${isActive('/dashboard')} pb-1`}>
+                        {t('nav_my_dashboard')}
                       </Link>
                     </>
                   )}
                   {user.role === 'admin' && (
                     <>
                       <Link to="/admin/dashboard" className={`${isActive('/admin/dashboard')} pb-1`}>
-                        Dashboard
+                        {t('nav_dashboard')}
                       </Link>
                       <Link to="/admin/analytics" className={`${isActive('/admin/analytics')} pb-1`}>
-                        Analytics
+                        {t('nav_analytics')}
                       </Link>
                     </>
                   )}
@@ -73,20 +78,28 @@ export default function Header() {
                       onClick={handleLogout}
                       className="bg-[#143627] text-white px-4 py-2 rounded hover:bg-[#0f281d] transition"
                     >
-                      Logout
+                      {t('nav_logout')}
                     </button>
                   </div>
                 </>
               ) : (
                 <div className="flex gap-2">
                   <Link to="/login" className="border border-[#2f6a4d] text-[#2f6a4d] px-4 py-2 rounded hover:bg-green-50 transition">
-                    Login
+                    {t('nav_login')}
                   </Link>
                   <Link to="/register" className="bg-[#2f6a4d] text-white px-4 py-2 rounded hover:bg-[#24563f] transition">
-                    Register
+                    {t('nav_register')}
                   </Link>
                 </div>
               )}
+              <button
+                type="button"
+                onClick={toggleLanguage}
+                aria-label={isUrdu ? 'Switch to English' : 'اردو میں تبدیل کریں'}
+                className="rounded border border-[#2f6a4d] px-3 py-1.5 text-sm font-semibold text-[#2f6a4d] hover:bg-green-50 transition"
+              >
+                {t('language_toggle')}
+              </button>
             </>
           )}
         </div>
@@ -105,37 +118,45 @@ export default function Header() {
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-green-100 bg-[#f4faf6] p-4">
-          <Link to="/" className="block py-2 text-gray-600 hover:text-green-600">Home</Link>
-          <Link to="/map" className="block py-2 text-gray-600 hover:text-green-600">Map</Link>
-          <Link to="/track" className="block py-2 text-gray-600 hover:text-green-600">Track</Link>
+          <Link to="/" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_home')}</Link>
+          <Link to="/map" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_map')}</Link>
+          <Link to="/track" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_track')}</Link>
           {user && user.role === 'citizen' && (
             <>
-              <Link to="/report" className="block py-2 text-gray-600 hover:text-green-600">Report Hazard</Link>
-              <Link to="/my-complaints" className="block py-2 text-gray-600 hover:text-green-600">My Complaints</Link>
+              <Link to="/report" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_report_hazard')}</Link>
+              <Link to="/my-complaints" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_my_complaints')}</Link>
+              <Link to="/dashboard" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_my_dashboard')}</Link>
             </>
           )}
           {user && user.role === 'admin' && (
             <>
-              <Link to="/admin/dashboard" className="block py-2 text-gray-600 hover:text-green-600">Dashboard</Link>
-              <Link to="/admin/analytics" className="block py-2 text-gray-600 hover:text-green-600">Analytics</Link>
+              <Link to="/admin/dashboard" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_dashboard')}</Link>
+              <Link to="/admin/analytics" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_analytics')}</Link>
             </>
           )}
           {!user && (
             <div className="flex gap-2 mt-2">
               <Link to="/login" className="flex-1 border border-green-600 text-green-600 px-4 py-2 rounded text-center">
-                Login
+                {t('nav_login')}
               </Link>
               <Link to="/register" className="flex-1 bg-green-600 text-white px-4 py-2 rounded text-center">
-                Register
+                {t('nav_register')}
               </Link>
             </div>
           )}
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            className="w-full mt-2 rounded border border-[#2f6a4d] px-4 py-2 text-sm font-semibold text-[#2f6a4d] hover:bg-green-50"
+          >
+            {t('language_toggle')}
+          </button>
           {user && (
             <button
               onClick={handleLogout}
               className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition mt-2"
             >
-              Logout
+              {t('nav_logout')}
             </button>
           )}
         </div>

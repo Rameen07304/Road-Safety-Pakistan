@@ -8,9 +8,11 @@ import cloudinary.uploader
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q
+from django.db.models import Count, Q
 
-from .models import Complaint, ComplaintStatusHistory
+from django.db import IntegrityError, models
+
+from .models import Complaint, ComplaintStatusHistory, ComplaintUpvote
 from .serializers import (
     ComplaintDetailSerializer,
     ComplaintListSerializer,
@@ -136,8 +138,16 @@ class ComplaintListView(APIView):
         paginator = PageNumberPagination()
         paginator.page_size = 20
         page = paginator.paginate_queryset(queryset, request)
-        serializer = ComplaintListSerializer(page, many=True)
+        serializer = ComplaintListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
+
+URGENCY_PIN_COLORS = {
+    "low": "#16A34A",
+    "medium": "#D97706",
+    "high": "#EA580C",
+    "critical": "#DC2626",
+}
 
 
 class ComplaintMapView(APIView):
@@ -160,9 +170,16 @@ class ComplaintMapView(APIView):
                     "description": complaint.description,
                     "urgency_level": complaint.urgency_level,
                     "urgency_score": complaint.urgency_score,
+                    "color": URGENCY_PIN_COLORS.get(complaint.urgency_level, "#2563EB"),
                     "detected_classes": complaint.detected_classes,
                     "status": complaint.status,
                     "submitted_at": complaint.submitted_at,
+                    "upvotes": complaint.upvotes,
+                    "has_upvoted": (
+                        complaint.upvote_records.filter(user=request.user).exists()
+                        if request.user.is_authenticated
+                        else False
+                    ),
                 }
             )
         return Response({"complaints": data, "results": data}, status=status.HTTP_200_OK)
@@ -184,12 +201,12 @@ class ComplaintTrackView(APIView):
 
         if complaint_id:
             complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
-            serializer = ComplaintDetailSerializer(complaint)
+            serializer = ComplaintDetailSerializer(complaint, context={"request": request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         if phone:
             complaints = Complaint.objects.filter(citizen__phone=phone)
-            serializer = ComplaintDetailSerializer(complaints, many=True)
+            serializer = ComplaintDetailSerializer(complaints, many=True, context={"request": request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(
@@ -206,8 +223,47 @@ class MyComplaintsView(APIView):
         paginator = PageNumberPagination()
         paginator.page_size = 20
         page = paginator.paginate_queryset(complaints, request)
-        serializer = ComplaintListSerializer(page, many=True)
+        serializer = ComplaintListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
+
+class MyDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        complaints = Complaint.objects.filter(citizen=request.user)
+
+        stats = complaints.aggregate(
+            total=Count("id"),
+            resolved=Count("id", filter=Q(status="resolved")),
+            in_progress=Count("id", filter=Q(status="in_progress")),
+            pending=Count(
+                "id",
+                filter=~Q(status__in=["resolved", "in_progress"]),
+            ),
+        )
+
+        most_recent = complaints.order_by("-submitted_at").first()
+        most_recent_data = (
+            ComplaintListSerializer(most_recent, context={"request": request}).data
+            if most_recent
+            else None
+        )
+
+        locations = list(
+            complaints.values(
+                "complaint_id", "latitude", "longitude", "urgency_level", "status"
+            )
+        )
+
+        return Response(
+            {
+                "stats": stats,
+                "most_recent_complaint": most_recent_data,
+                "locations": locations,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ComplaintDetailView(APIView):
@@ -215,7 +271,7 @@ class ComplaintDetailView(APIView):
 
     def get(self, request, complaint_id):
         complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
-        serializer = ComplaintDetailSerializer(complaint)
+        serializer = ComplaintDetailSerializer(complaint, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -223,11 +279,7 @@ class ComplaintStatusUpdateView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def patch(self, request, complaint_id):
-        complaint = get_object_or_404(
-            Complaint.objects.filter(
-                Q(complaint_id=complaint_id) | Q(id=complaint_id)
-            )
-        )
+        complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
         serializer = ComplaintStatusUpdateSerializer(complaint, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -241,4 +293,49 @@ class ComplaintStatusUpdateView(APIView):
             changed_by=request.user,
             note=request.data.get("admin_notes", ""),
         )
-        return Response(ComplaintDetailSerializer(complaint).data, status=status.HTTP_200_OK)
+        return Response(
+            ComplaintDetailSerializer(complaint, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class ComplaintUpvoteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, complaint_id):
+        complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+        try:
+            with transaction.atomic():
+                ComplaintUpvote.objects.create(complaint=complaint, user=request.user)
+                complaint.upvotes = models.F("upvotes") + 1
+                complaint.save(update_fields=["upvotes"])
+        except IntegrityError:
+            return Response(
+                {"detail": "You have already upvoted this complaint."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        complaint.refresh_from_db()
+        return Response(
+            {"complaint_id": complaint.complaint_id, "upvotes": complaint.upvotes, "has_upvoted": True},
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request, complaint_id):
+        complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+        deleted, _ = ComplaintUpvote.objects.filter(complaint=complaint, user=request.user).delete()
+        if not deleted:
+            return Response(
+                {"detail": "You have not upvoted this complaint."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        with transaction.atomic():
+            complaint.upvotes = models.F("upvotes") - 1
+            complaint.save(update_fields=["upvotes"])
+
+        complaint.refresh_from_db()
+        return Response(
+            {"complaint_id": complaint.complaint_id, "upvotes": complaint.upvotes, "has_upvoted": False},
+            status=status.HTTP_200_OK,
+        )

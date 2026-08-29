@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Complaint, ComplaintStatusHistory
+from .models import Complaint, ComplaintStatusHistory, ComplaintUpvote
 
 User = get_user_model()
 
@@ -54,6 +54,8 @@ class StatusHistorySerializer(serializers.ModelSerializer):
 
 
 class ComplaintListSerializer(serializers.ModelSerializer):
+    has_upvoted = serializers.SerializerMethodField()
+
     class Meta:
         model = Complaint
         fields = [
@@ -68,10 +70,20 @@ class ComplaintListSerializer(serializers.ModelSerializer):
             "ward",
             "image_url",
             "annotated_image_url",
+            "resolved_image_url",
             "submitted_at",
             "sentiment",
+            "upvotes",
+            "has_upvoted",
         ]
         read_only_fields = fields
+
+    def get_has_upvoted(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        return obj.upvote_records.filter(user=user).exists()
 
 
 class ComplaintDetailSerializer(serializers.ModelSerializer):
@@ -79,6 +91,7 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
     citizen_name = serializers.SerializerMethodField()
     resolution_time_days = serializers.SerializerMethodField()
     annotated_image_base64 = serializers.SerializerMethodField()
+    has_upvoted = serializers.SerializerMethodField()
 
     class Meta:
         model = Complaint
@@ -96,6 +109,7 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             "confidence_scores",
             "annotated_image_url",
             "annotated_image_base64",
+            "resolved_image_url",
             "detection_raw",
             "sentiment",
             "sentiment_keywords",
@@ -110,6 +124,8 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             "updated_at",
             "resolution_time_days",
             "status_history",
+            "upvotes",
+            "has_upvoted",
         ]
         read_only_fields = fields
 
@@ -124,11 +140,20 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
     def get_resolution_time_days(self, obj):
         return obj.resolution_time_days
 
+    def get_has_upvoted(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        return obj.upvote_records.filter(user=user).exists()
+
 
 class ComplaintStatusUpdateSerializer(serializers.ModelSerializer):
+    resolved_image_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = Complaint
-        fields = ["status", "admin_notes", "assigned_department"]
+        fields = ["status", "admin_notes", "assigned_department", "resolved_image_url"]
 
     def validate(self, data):
         status = data.get("status")

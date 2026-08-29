@@ -1,6 +1,7 @@
 from collections import Counter
-from datetime import timedelta
+from datetime import datetime, timedelta
 
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -9,6 +10,8 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsAdminUser
 from complaints.models import Complaint
+
+from .reports import build_report_pdf
 
 
 class DashboardStatsView(APIView):
@@ -153,3 +156,37 @@ class TrendView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class ReportPdfView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request):
+        start_date = self._parse_date(request.query_params.get("start_date"))
+        end_date = self._parse_date(request.query_params.get("end_date"))
+
+        if request.query_params.get("start_date") and start_date is None:
+            return Response(
+                {"detail": "start_date must be in YYYY-MM-DD format."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if request.query_params.get("end_date") and end_date is None:
+            return Response(
+                {"detail": "end_date must be in YYYY-MM-DD format."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pdf_bytes = build_report_pdf(start_date=start_date, end_date=end_date)
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="road_safety_report.pdf"'
+        return response
+
+    @staticmethod
+    def _parse_date(value):
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            return None

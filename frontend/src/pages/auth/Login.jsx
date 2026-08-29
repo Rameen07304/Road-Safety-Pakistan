@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
@@ -17,6 +18,7 @@ export default function Login() {
   const [toast, setToast] = useState(null)
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { t } = useLanguage()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -86,8 +88,8 @@ export default function Login() {
             <div className="mx-auto max-w-md">
               <div className="mb-8 text-center lg:text-left">
                 <p className="text-[28px] font-serif text-[#1c4b37]">واپس آئیں</p>
-                <h2 className="mt-1 text-4xl font-black text-[#173b2b]">Welcome Back</h2>
-                <p className="mt-2 text-sm text-[#6b7c73]">Enter your credentials to access your dashboard.</p>
+                <h2 className="mt-1 text-4xl font-black text-[#173b2b]">{t('login_welcome_back')}</h2>
+                <p className="mt-2 text-sm text-[#6b7c73]">{t('login_subtitle')}</p>
               </div>
 
               {error && <Alert message={error} type="error" className="mb-5" />}
@@ -99,14 +101,14 @@ export default function Login() {
                     onClick={() => setLoginMethod('email')}
                     className={`rounded-md py-2 transition ${loginMethod === 'email' ? 'bg-white text-[#173b2b] shadow-sm' : ''}`}
                   >
-                    Email
+                    {t('login_email_tab')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setLoginMethod('phone')}
                     className={`rounded-md py-2 transition ${loginMethod === 'phone' ? 'bg-white text-[#173b2b] shadow-sm' : ''}`}
                   >
-                    Phone
+                    {t('login_phone_tab')}
                   </button>
                 </div>
 
@@ -171,10 +173,10 @@ export default function Login() {
                 <div className="flex items-center justify-between text-sm">
                   <label className="flex items-center gap-2 text-[#5d7067]">
                     <input type="checkbox" className="h-4 w-4 rounded border-[#b9c9be] text-[#2f6a4d] focus:ring-[#2f6a4d]" />
-                    Remember me
+                    {t('login_remember_me')}
                   </label>
                   <Link to="/forgot-password" className="font-semibold text-[#2f6a4d] hover:text-[#1c4b37]">
-                    Forgot Password?
+                    {t('login_forgot_password')}
                   </Link>
                 </div>
 
@@ -183,15 +185,15 @@ export default function Login() {
                   className="w-full !rounded-md !bg-[#173b2b] !py-3 text-base font-bold hover:!bg-[#0f281d]"
                   loading={loading}
                 >
-                  {loading ? 'Logging in...' : 'Login'}
+                  {loading ? t('login_button_loading') : t('login_button')}
                   <span>→</span>
                 </Button>
               </form>
 
               <div className="mt-6 text-center text-sm text-[#596a61]">
-                New to Road Safety Pakistan?{' '}
+                {t('login_new_here')}{' '}
                 <Link to="/register" className="font-semibold text-[#1f5b43] hover:text-[#154430]">
-                  Create Account
+                  {t('login_create_account')}
                 </Link>
               </div>
 

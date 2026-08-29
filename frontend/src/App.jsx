@@ -16,6 +16,7 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 // Citizen pages
 import ReportHazard  from './pages/citizen/ReportHazard'
 import MyComplaints  from './pages/citizen/MyComplaints'
+import CitizenDashboard from './pages/citizen/Dashboard'
 
 // Admin pages
 import Dashboard      from './pages/admin/Dashboard'
@@ -110,6 +111,11 @@ export default function App() {
         <Route path="/my-complaints" element={
           <CitizenRoute>
             <MyComplaints />
+          </CitizenRoute>
+        } />
+        <Route path="/dashboard" element={
+          <CitizenRoute>
+            <CitizenDashboard />
           </CitizenRoute>
         } />
 
