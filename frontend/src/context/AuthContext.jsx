@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
         'refresh_token')
       await API.post('/api/auth/logout/', 
         { refresh })
-    } catch (e) {
+    } catch {
       // Logout API call is best-effort; ignore errors silently
     }
     localStorage.clear()

@@ -2,14 +2,11 @@
 Full end-to-end smoke test covering all 8 features.
 Run with:  python manage.py smoke_test
 """
-import io
 import sys
 from PIL import Image
 import numpy as np
 
 from django.core.management.base import BaseCommand
-from django.db import transaction
-from django.utils import timezone
 
 from accounts.models import User
 from complaints.models import (

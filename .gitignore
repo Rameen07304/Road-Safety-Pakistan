@@ -64,3 +64,9 @@ desktop.ini
 *.tar.gz
 *.rar
 .cache/
+
+# Screenshots from browser verification (never commit)
+/screenshot-*.png
+/test*.png
+/citizen-*.png
+/admin-*.png
