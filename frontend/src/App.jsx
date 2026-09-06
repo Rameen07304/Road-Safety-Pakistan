@@ -22,6 +22,7 @@ import CitizenDashboard from './pages/citizen/Dashboard'
 import Dashboard      from './pages/admin/Dashboard'
 import ComplaintDetail from './pages/admin/ComplaintDetail'
 import WardAnalytics  from './pages/admin/WardAnalytics'
+import FlaggedQueue   from './pages/admin/FlaggedQueue'
 
 // Route guard: citizen only
 function CitizenRoute({ children }) {
@@ -133,6 +134,11 @@ export default function App() {
         <Route path="/admin/analytics" element={
           <AdminRoute>
             <WardAnalytics />
+          </AdminRoute>
+        } />
+        <Route path="/admin/flagged" element={
+          <AdminRoute>
+            <FlaggedQueue />
           </AdminRoute>
         } />
 

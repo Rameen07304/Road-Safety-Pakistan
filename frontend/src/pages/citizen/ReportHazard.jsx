@@ -39,6 +39,8 @@ export default function ReportHazard() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [toast, setToast] = useState(null)
+  const [detectedClasses, setDetectedClasses] = useState([])
+  const [imageUrlUploading, setImageUrlUploading] = useState(false)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
 
@@ -59,6 +61,26 @@ export default function ReportHazard() {
     setSelectedFile(file)
     setError('')
     setStep(2)
+
+    // Upload image immediately so we get early detection results
+    setImageUrlUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const uploadRes = await complaintService.uploadImage(fd, (progressEvent) => {
+        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        setUploadProgress(percent)
+      })
+      setFormData(prev => ({ ...prev, image_url: uploadRes.data.image_url }))
+      if (uploadRes.data.detected_classes?.length > 0) {
+        setDetectedClasses(uploadRes.data.detected_classes)
+      }
+    } catch {
+      // Non-fatal: image will be re-uploaded at submit time if needed
+    } finally {
+      setImageUrlUploading(false)
+      setUploadProgress(0)
+    }
   }
 
   const handleChange = (e) => {
@@ -98,7 +120,8 @@ export default function ReportHazard() {
 
       let imageUrl = formData.image_url
 
-      if (selectedFile) {
+      // Only upload if not already uploaded at step 1
+      if (!imageUrl && selectedFile) {
         const fd = new FormData()
         fd.append('image', selectedFile)
         const uploadRes = await complaintService.uploadImage(fd, (progressEvent) => {
@@ -119,7 +142,12 @@ export default function ReportHazard() {
       })
 
       setSuccess(true)
-      setToast({ message: 'Complaint submitted successfully!', type: 'success' })
+      
+      if (response.data.flagged) {
+        setToast({ message: 'Your complaint is under review by our team.', type: 'info' })
+      } else {
+        setToast({ message: 'Complaint submitted successfully!', type: 'success' })
+      }
       
       setTimeout(() => {
         navigate(`/track?id=${response.data.complaint_id}`)
@@ -219,6 +247,31 @@ export default function ReportHazard() {
             {step === 3 && (
               <Card>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Step 3: Describe the Hazard</h2>
+
+                {/* Smart description suggestion */}
+                {detectedClasses.length > 0 && !formData.description && (
+                  <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                    <span className="text-xl">💡</span>
+                    <p className="flex-1 text-sm text-blue-800">
+                      <strong>Suggestion:</strong>{' '}
+                      {detectedClasses[0].replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())} reported in {formData.ward || 'your'} area
+                    </p>
+                    <button
+                      type="button"
+                      className="rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white hover:bg-blue-700 transition"
+                      onClick={() => {
+                        const hazard = detectedClasses[0].replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
+                        setFormData(prev => ({
+                          ...prev,
+                          description: `${hazard} reported in ${formData.ward || 'local'} area`
+                        }))
+                      }}
+                    >
+                      Use this
+                    </button>
+                  </div>
+                )}
+
                 <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Describe the hazard..." className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none mb-4" rows="5" required></textarea>
                 <div className="flex gap-4">
                   <Button variant="secondary" className="flex-1" onClick={() => setStep(2)}>← Back</Button>

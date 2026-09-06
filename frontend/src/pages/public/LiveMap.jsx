@@ -199,6 +199,22 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
                       onChange={(next) => onUpvoteChange(complaint.complaint_id, next)}
                     />
                   </div>
+                  {complaint.linked_count > 1 && (
+                    <div className="mb-2 rounded bg-amber-50 border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-800">
+                      👥 {complaint.linked_count} reports linked nearby
+                      {complaint.cluster_progression && (
+                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          complaint.cluster_progression === 'Worsening'
+                            ? 'bg-red-100 text-red-700'
+                            : complaint.cluster_progression === 'Improving'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {complaint.cluster_progression === 'Worsening' ? '📈' : complaint.cluster_progression === 'Improving' ? '📉' : '➡️'} {complaint.cluster_progression}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm text-gray-700 mb-2">{complaint.description}</p>
                   <p className="text-xs text-gray-600">Location: {complaint.ward || complaint.address || 'Lahore'}</p>
                 </div>
@@ -492,6 +508,9 @@ export default function LiveMap() {
                       <div className="flex gap-2 text-[10px] font-bold uppercase">
                         <Badge variant="warning" className="px-2 py-1">{(activeComplaint.detected_classes?.[0] || 'Pothole').toUpperCase()}</Badge>
                         <Badge variant={activeComplaint.urgency_level?.toLowerCase() || 'default'} className="px-2 py-1">{(activeComplaint.urgency_level || 'critical').toUpperCase()}</Badge>
+                        {activeComplaint.linked_count > 1 && (
+                          <Badge variant="default" className="px-2 py-1 !bg-amber-100 !text-amber-800">👥 {activeComplaint.linked_count} linked</Badge>
+                        )}
                       </div>
                       <h3 className="text-lg font-black text-gray-900 leading-tight">{activeComplaint.description || 'Severely Damaged Road'}</h3>
                     </div>

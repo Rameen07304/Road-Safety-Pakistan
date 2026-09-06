@@ -1,8 +1,88 @@
+import math
 import uuid
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
+
+def haversine_meters(lat1, lon1, lat2, lon2):
+    """Return distance in meters between two (lat, lon) coordinate pairs."""
+    R = 6_371_000  # Earth radius in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+MIN_RESOLUTION_SAMPLES = 3
+
+
+def predict_resolution_days(ward, detected_classes):
+    """
+    Estimate resolution time in days by averaging resolved complaints
+    grouped by ward + primary hazard type.  Falls back to city-wide
+    average when < MIN_RESOLUTION_SAMPLES.  Returns None if even
+    city-wide has too few samples.
+    """
+    primary_class = detected_classes[0] if isinstance(detected_classes, list) and detected_classes else None
+
+    # --- Ward + hazard type average ---
+    group_qs = Complaint.objects.filter(status="resolved", resolved_at__isnull=False)
+    if ward:
+        group_qs = group_qs.filter(ward__iexact=ward)
+
+    group_samples = [
+        c.resolution_time_days
+        for c in group_qs
+        if c.resolution_time_days is not None
+        and (primary_class is None
+             or (isinstance(c.detected_classes, list) and primary_class in c.detected_classes))
+    ]
+    if len(group_samples) >= MIN_RESOLUTION_SAMPLES:
+        return round(sum(group_samples) / len(group_samples), 1)
+
+    # --- City-wide fallback (all hazard types) ---
+    city_samples = [
+        c.resolution_time_days
+        for c in Complaint.objects.filter(status="resolved", resolved_at__isnull=False)
+        if c.resolution_time_days is not None
+    ]
+    if len(city_samples) >= MIN_RESOLUTION_SAMPLES:
+        return round(sum(city_samples) / len(city_samples), 1)
+
+    return None
+
+
+class ComplaintCluster(models.Model):
+    """Groups complaints that report the same hazard at the same location."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    primary_class = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Cluster {self.id} ({self.primary_class}) \u2013 {self.complaints.count()} reports"
+
+    @property
+    def progression(self):
+        """
+        Compare urgency_score of earliest vs most recent complaint in the cluster.
+        Returns 'Worsening', 'Improving', 'Unchanged', or None (< 2 complaints).
+        """
+        members = self.complaints.order_by("submitted_at")
+        if members.count() < 2:
+            return None
+        earliest = members.first().urgency_score
+        latest = members.last().urgency_score
+        if latest > earliest:
+            return "Worsening"
+        if latest < earliest:
+            return "Improving"
+        return "Unchanged"
 
 
 class Complaint(models.Model):
@@ -70,6 +150,19 @@ class Complaint(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     upvotes = models.IntegerField(default=0)
+
+    cluster = models.ForeignKey(
+        ComplaintCluster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="complaints",
+    )
+
+    # Spam / fake report detection fields
+    flagged = models.BooleanField(default=False)
+    flag_reason = models.CharField(max_length=255, blank=True, null=True)
+    image_hash = models.CharField(max_length=64, blank=True, null=True, db_index=True)
 
     class Meta:
         ordering = ["-submitted_at"]

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, analyticsService } from '../../services/api'
+import { api, analyticsService, complaintService } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge, Button, Alert } from '../../components/UI'
@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('pending')
   const [stats, setStats] = useState({ total: 0, pending: 0, resolved: 0, critical: 0 })
+  const [flaggedCount, setFlaggedCount] = useState(0)
   const [reportStartDate, setReportStartDate] = useState('')
   const [reportEndDate, setReportEndDate] = useState('')
   const [exportingReport, setExportingReport] = useState(false)
@@ -37,8 +38,19 @@ export default function Dashboard() {
     }
   }
 
+  const fetchFlaggedCount = async () => {
+    try {
+      const res = await complaintService.flaggedList()
+      const data = res.data.results || res.data || []
+      setFlaggedCount(data.length)
+    } catch {
+      // Non-critical
+    }
+  }
+
   useEffect(() => {
     fetchComplaints()
+    fetchFlaggedCount()
   }, [])
 
   const handleExportReport = async () => {
@@ -109,7 +121,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
+        <div className="grid md:grid-cols-5 gap-4 mb-8">
           <Card className="text-center">
             <div className="text-4xl font-bold text-green-600 mb-2">{stats.total}</div>
             <div className="text-gray-600">Total Complaints</div>
@@ -125,6 +137,13 @@ export default function Dashboard() {
           <Card className="text-center">
             <div className="text-4xl font-bold text-red-600 mb-2">{stats.critical}</div>
             <div className="text-gray-600">Critical</div>
+          </Card>
+          <Card
+            className="text-center cursor-pointer hover:ring-2 hover:ring-yellow-400 transition"
+            onClick={() => navigate('/admin/flagged')}
+          >
+            <div className="text-4xl font-bold text-yellow-600 mb-2">{flaggedCount}</div>
+            <div className="text-gray-600">Flagged for Review</div>
           </Card>
         </div>
 
@@ -158,8 +177,8 @@ export default function Dashboard() {
               <thead>
                 <tr className="border-b">
                   <th className="text-left p-4 font-bold">ID</th>
-                  <th className="text-left p-4 font-bold">Location</th>
-                  <th className="text-left p-4 font-bold">Hazard</th>
+                  <th className="text-left p-4 font-bold">Summary</th>
+                  <th className="text-left p-4 font-bold">Department</th>
                   <th className="text-left p-4 font-bold">Urgency</th>
                   <th className="text-left p-4 font-bold">Status</th>
                   <th className="text-left p-4 font-bold">Action</th>
@@ -169,8 +188,18 @@ export default function Dashboard() {
                 {filteredComplaints.map(complaint => (
                   <tr key={complaint.complaint_id} className="border-b hover:bg-gray-50">
                     <td className="p-4 font-semibold">{complaint.complaint_id}</td>
-                    <td className="p-4">{complaint.ward}</td>
-                    <td className="p-4">{complaint.detected_classes?.join(', ') || 'N/A'}</td>
+                    <td className="p-4 text-sm text-gray-700 max-w-xs truncate" title={complaint.summary}>
+                      {complaint.summary || '—'}
+                    </td>
+                    <td className="p-4">
+                      {complaint.assigned_department ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                          🏛️ {complaint.assigned_department}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Unassigned</span>
+                      )}
+                    </td>
                     <td className="p-4">
                       <Badge variant={complaint.urgency_level?.toLowerCase()}>
                         {complaint.urgency_level} ({complaint.urgency_score})

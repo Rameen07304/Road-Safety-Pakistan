@@ -101,6 +101,13 @@ export const complaintService = {
     API.post(`/api/complaints/${id}/upvote/`),
   removeUpvote: (id) =>
     API.delete(`/api/complaints/${id}/upvote/`),
+  // Admin flagged-complaint review queue
+  flaggedList: () =>
+    API.get('/api/admin/complaints/flagged/'),
+  approveComplaint: (id) =>
+    API.post(`/api/admin/complaints/${id}/approve/`),
+  rejectComplaint: (id) =>
+    API.post(`/api/admin/complaints/${id}/reject/`),
 }
 
 // Detection service functions

@@ -1,9 +1,40 @@
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Complaint, ComplaintStatusHistory, ComplaintUpvote
+from .models import Complaint, ComplaintStatusHistory, ComplaintUpvote, predict_resolution_days
 
 User = get_user_model()
+
+
+def _build_summary(obj):
+    """
+    Generate a one-line public summary from non-sensitive fields only.
+    Never includes phone, CNIC, citizen name, or free-text description.
+    """
+    # Hazard type: first detected class, title-cased, fallback to "Hazard"
+    detected = obj.detected_classes
+    hazard = detected[0].replace("_", " ").title() if isinstance(detected, list) and detected else "Hazard"
+
+    # Urgency level, title-cased
+    urgency = (obj.urgency_level or "low").title()
+
+    # Ward or generic location
+    ward = obj.ward or "Unknown area"
+
+    # Upvotes
+    upvotes = obj.upvotes or 0
+    upvote_text = f"{upvotes} upvote{'s' if upvotes != 1 else ''}"
+
+    # Days since submission
+    if obj.submitted_at:
+        delta = timezone.now() - obj.submitted_at
+        days_ago = max(delta.days, 0)
+        time_text = f"reported {days_ago} day{'s' if days_ago != 1 else ''} ago"
+    else:
+        time_text = "recently reported"
+
+    return f"{urgency}: {hazard} at {ward}, {upvote_text}, {time_text}"
 
 
 class ComplaintSubmitSerializer(serializers.ModelSerializer):
@@ -55,6 +86,9 @@ class StatusHistorySerializer(serializers.ModelSerializer):
 
 class ComplaintListSerializer(serializers.ModelSerializer):
     has_upvoted = serializers.SerializerMethodField()
+    linked_count = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+    cluster_progression = serializers.SerializerMethodField()
 
     class Meta:
         model = Complaint
@@ -75,6 +109,12 @@ class ComplaintListSerializer(serializers.ModelSerializer):
             "sentiment",
             "upvotes",
             "has_upvoted",
+            "linked_count",
+            "assigned_department",
+            "summary",
+            "cluster_progression",
+            "flagged",
+            "flag_reason",
         ]
         read_only_fields = fields
 
@@ -85,6 +125,19 @@ class ComplaintListSerializer(serializers.ModelSerializer):
             return False
         return obj.upvote_records.filter(user=user).exists()
 
+    def get_linked_count(self, obj):
+        if obj.cluster:
+            return obj.cluster.complaints.count()
+        return 0
+
+    def get_summary(self, obj):
+        return _build_summary(obj)
+
+    def get_cluster_progression(self, obj):
+        if obj.cluster:
+            return obj.cluster.progression
+        return None
+
 
 class ComplaintDetailSerializer(serializers.ModelSerializer):
     status_history = StatusHistorySerializer(many=True, read_only=True)
@@ -92,6 +145,10 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
     resolution_time_days = serializers.SerializerMethodField()
     annotated_image_base64 = serializers.SerializerMethodField()
     has_upvoted = serializers.SerializerMethodField()
+    linked_count = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+    cluster_progression = serializers.SerializerMethodField()
+    predicted_resolution_days = serializers.SerializerMethodField()
 
     class Meta:
         model = Complaint
@@ -126,6 +183,12 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             "status_history",
             "upvotes",
             "has_upvoted",
+            "linked_count",
+            "summary",
+            "cluster_progression",
+            "predicted_resolution_days",
+            "flagged",
+            "flag_reason",
         ]
         read_only_fields = fields
 
@@ -146,6 +209,22 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
         if not user or not user.is_authenticated:
             return False
         return obj.upvote_records.filter(user=user).exists()
+
+    def get_linked_count(self, obj):
+        if obj.cluster:
+            return obj.cluster.complaints.count()
+        return 0
+
+    def get_summary(self, obj):
+        return _build_summary(obj)
+
+    def get_cluster_progression(self, obj):
+        if obj.cluster:
+            return obj.cluster.progression
+        return None
+
+    def get_predicted_resolution_days(self, obj):
+        return predict_resolution_days(obj.ward, obj.detected_classes)
 
 
 class ComplaintStatusUpdateSerializer(serializers.ModelSerializer):

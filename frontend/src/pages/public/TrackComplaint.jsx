@@ -114,6 +114,37 @@ export default function TrackComplaint() {
                 </div>
               </div>
 
+              {/* Linked reports banner */}
+              {complaint.linked_count > 1 && (
+                <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                  <span className="text-2xl">👥</span>
+                  <p className="text-sm font-semibold text-amber-800">
+                    {complaint.linked_count - 1} other citizen{complaint.linked_count - 1 !== 1 ? 's' : ''} reported this same issue nearby
+                  </p>
+                  {complaint.cluster_progression && (
+                    <span className={`ml-auto rounded-full px-3 py-1 text-xs font-bold ${
+                      complaint.cluster_progression === 'Worsening'
+                        ? 'bg-red-100 text-red-700'
+                        : complaint.cluster_progression === 'Improving'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {complaint.cluster_progression === 'Worsening' ? '📈' : complaint.cluster_progression === 'Improving' ? '📉' : '➡️'} {complaint.cluster_progression}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Under review notice */}
+              {complaint.flagged && (
+                <div className="flex items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3">
+                  <span className="text-2xl">⏳</span>
+                  <p className="text-sm font-semibold text-yellow-800">
+                    This complaint is currently under review by our moderation team.
+                  </p>
+                </div>
+              )}
+
               {/* Status Timeline */}
               <div>
                 <h3 className="font-bold text-gray-900 mb-4">{t('track_status_timeline')}</h3>
@@ -146,6 +177,14 @@ export default function TrackComplaint() {
                     <p><strong>{t('track_type_label')}:</strong> {complaint.detected_classes?.join(', ') || 'N/A'}</p>
                     <p><strong>{t('track_location_label')}:</strong> {complaint.address}</p>
                     <p><strong>{t('track_ward_label')}:</strong> {complaint.ward}</p>
+                    {complaint.assigned_department && (
+                      <p><strong>Department:</strong> {complaint.assigned_department}</p>
+                    )}
+                    {complaint.predicted_resolution_days != null ? (
+                      <p><strong>Estimated resolution:</strong> {complaint.predicted_resolution_days} days</p>
+                    ) : complaint.status !== 'resolved' ? (
+                      <p className="text-gray-400 italic">Not enough data to estimate resolution time</p>
+                    ) : null}
                   </div>
                 </div>
                 <div>

@@ -91,6 +91,11 @@ export default function MyComplaints() {
                       <span>Location: {complaint.ward || 'N/A'}</span>
                       <span>Date: {new Date(complaint.submitted_at).toLocaleDateString()}</span>
                       <span>AI: {complaint.detected_classes?.join(', ') || 'Analyzing...'}</span>
+                      {complaint.assigned_department && (
+                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                          🏛️ {complaint.assigned_department}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">

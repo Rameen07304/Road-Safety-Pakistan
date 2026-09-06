@@ -65,6 +65,9 @@ export default function Header() {
                       <Link to="/admin/dashboard" className={`${isActive('/admin/dashboard')} pb-1`}>
                         {t('nav_dashboard')}
                       </Link>
+                      <Link to="/admin/flagged" className={`${isActive('/admin/flagged')} pb-1`}>
+                        Flagged
+                      </Link>
                       <Link to="/admin/analytics" className={`${isActive('/admin/analytics')} pb-1`}>
                         {t('nav_analytics')}
                       </Link>
@@ -131,6 +134,7 @@ export default function Header() {
           {user && user.role === 'admin' && (
             <>
               <Link to="/admin/dashboard" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_dashboard')}</Link>
+              <Link to="/admin/flagged" className="block py-2 text-gray-600 hover:text-green-600">Flagged</Link>
               <Link to="/admin/analytics" className="block py-2 text-gray-600 hover:text-green-600">{t('nav_analytics')}</Link>
             </>
           )}
