@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { complaintService } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import { Heart } from 'lucide-react'
 
 export default function UpvoteButton({ complaintId, upvotes, hasUpvoted, onChange, className = '', size = 'md' }) {
   const { isLoggedIn } = useAuth()
@@ -11,6 +12,11 @@ export default function UpvoteButton({ complaintId, upvotes, hasUpvoted, onChang
   const sizes = {
     sm: 'text-sm gap-1',
     md: 'text-base gap-1.5',
+  }
+
+  const iconSizes = {
+    sm: 14,
+    md: 16,
   }
 
   const handleClick = async (e) => {
@@ -48,9 +54,14 @@ export default function UpvoteButton({ complaintId, upvotes, hasUpvoted, onChang
       onClick={handleClick}
       disabled={pending}
       aria-label={hasUpvoted ? 'Remove upvote' : 'Upvote this complaint'}
-      className={`inline-flex items-center font-semibold transition disabled:opacity-60 ${sizes[size]} ${hasUpvoted ? 'text-red-600' : 'text-gray-500 hover:text-red-500'} ${className}`}
+      className={`inline-flex items-center font-semibold transition disabled:opacity-60 ${sizes[size]} ${hasUpvoted ? 'text-danger' : 'text-neutral-400 hover:text-danger'} ${className}`}
     >
-      <span>{hasUpvoted ? '❤️' : '🤍'}</span>
+      <Heart
+        size={iconSizes[size]}
+        fill={hasUpvoted ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth={2}
+      />
       <span>{upvotes}</span>
     </button>
   )
