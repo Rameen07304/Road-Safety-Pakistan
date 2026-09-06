@@ -359,10 +359,10 @@ class ComplaintListView(APIView):
 
 
 URGENCY_PIN_COLORS = {
-    "low": "#16A34A",
-    "medium": "#D97706",
-    "high": "#EA580C",
-    "critical": "#DC2626",
+    "low": "#2196a8",
+    "medium": "#b8860b",
+    "high": "#d4501a",
+    "critical": "#d42020",
 }
 
 
