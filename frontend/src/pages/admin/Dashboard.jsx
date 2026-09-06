@@ -4,6 +4,7 @@ import { api, analyticsService, complaintService } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge, Button, Alert } from '../../components/UI'
+import { Loader2, FileText, FileDown, Clock, CheckCircle2, AlertTriangle, Flag, Building2 } from 'lucide-react'
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
@@ -88,32 +89,33 @@ export default function Dashboard() {
   return (
     <>
       <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Admin Dashboard</h1>
+          <h1 className="text-3xl font-heading font-bold text-neutral-900">Admin Dashboard</h1>
 
           <Card className="w-full lg:w-auto">
             <div className="flex flex-wrap items-end gap-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Start Date</label>
+                <label className="block text-xs font-semibold text-neutral-500 mb-1">Start Date</label>
                 <input
                   type="date"
                   value={reportStartDate}
                   onChange={(e) => setReportStartDate(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">End Date</label>
+                <label className="block text-xs font-semibold text-neutral-500 mb-1">End Date</label>
                 <input
                   type="date"
                   value={reportEndDate}
                   onChange={(e) => setReportEndDate(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition"
                 />
               </div>
               <Button loading={exportingReport} onClick={handleExportReport}>
-                {exportingReport ? 'Generating report...' : '📄 Export PDF Report'}
+                <FileDown size={16} />
+                {exportingReport ? 'Generating report...' : 'Export PDF Report'}
               </Button>
             </div>
             {exportError && <Alert message={exportError} type="error" className="mt-3" />}
@@ -121,29 +123,45 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid md:grid-cols-5 gap-4 mb-8">
-          <Card className="text-center">
-            <div className="text-4xl font-bold text-green-600 mb-2">{stats.total}</div>
-            <div className="text-gray-600">Total Complaints</div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          <Card variant="flat" className="text-center">
+            <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <FileText size={18} className="text-primary-500" />
+            </div>
+            <div className="text-3xl font-heading font-bold text-neutral-900 mb-1">{stats.total}</div>
+            <div className="text-sm text-neutral-500">Total Complaints</div>
           </Card>
-          <Card className="text-center">
-            <div className="text-4xl font-bold text-orange-600 mb-2">{stats.pending}</div>
-            <div className="text-gray-600">Pending</div>
+          <Card variant="flat" className="text-center">
+            <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <Clock size={18} className="text-urgency-medium" />
+            </div>
+            <div className="text-3xl font-heading font-bold text-urgency-medium mb-1">{stats.pending}</div>
+            <div className="text-sm text-neutral-500">Pending</div>
           </Card>
-          <Card className="text-center">
-            <div className="text-4xl font-bold text-blue-600 mb-2">{stats.resolved}</div>
-            <div className="text-gray-600">Resolved</div>
+          <Card variant="flat" className="text-center">
+            <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 size={18} className="text-success" />
+            </div>
+            <div className="text-3xl font-heading font-bold text-success mb-1">{stats.resolved}</div>
+            <div className="text-sm text-neutral-500">Resolved</div>
           </Card>
-          <Card className="text-center">
-            <div className="text-4xl font-bold text-red-600 mb-2">{stats.critical}</div>
-            <div className="text-gray-600">Critical</div>
+          <Card variant="flat" className="text-center">
+            <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <AlertTriangle size={18} className="text-urgency-critical" />
+            </div>
+            <div className="text-3xl font-heading font-bold text-danger mb-1">{stats.critical}</div>
+            <div className="text-sm text-neutral-500">Critical</div>
           </Card>
           <Card
-            className="text-center cursor-pointer hover:ring-2 hover:ring-yellow-400 transition"
+            variant="flat"
+            className="text-center cursor-pointer hover:ring-2 hover:ring-accent transition"
             onClick={() => navigate('/admin/flagged')}
           >
-            <div className="text-4xl font-bold text-yellow-600 mb-2">{flaggedCount}</div>
-            <div className="text-gray-600">Flagged for Review</div>
+            <div className="w-10 h-10 bg-accent-light rounded-lg flex items-center justify-center mx-auto mb-3">
+              <Flag size={18} className="text-accent-dark" />
+            </div>
+            <div className="text-3xl font-heading font-bold text-accent-dark mb-1">{flaggedCount}</div>
+            <div className="text-sm text-neutral-500">Flagged for Review</div>
           </Card>
         </div>
 
@@ -157,8 +175,8 @@ export default function Dashboard() {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`px-4 py-2 rounded-lg font-semibold transition ${
-                filter === f.id ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                filter === f.id ? 'bg-primary-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
               {f.label}
@@ -169,35 +187,35 @@ export default function Dashboard() {
         {/* Complaints Table */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            <Loader2 size={36} className="text-primary-500 animate-spin" />
           </div>
         ) : (
-          <Card className="overflow-x-auto">
+          <Card className="overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left p-4 font-bold">ID</th>
-                  <th className="text-left p-4 font-bold">Summary</th>
-                  <th className="text-left p-4 font-bold">Department</th>
-                  <th className="text-left p-4 font-bold">Urgency</th>
-                  <th className="text-left p-4 font-bold">Status</th>
-                  <th className="text-left p-4 font-bold">Action</th>
+                <tr className="border-b border-neutral-100 bg-neutral-50">
+                  <th className="text-left p-4 font-heading font-bold text-neutral-700">ID</th>
+                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Summary</th>
+                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Department</th>
+                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Urgency</th>
+                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Status</th>
+                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredComplaints.map(complaint => (
-                  <tr key={complaint.complaint_id} className="border-b hover:bg-gray-50">
-                    <td className="p-4 font-semibold">{complaint.complaint_id}</td>
-                    <td className="p-4 text-sm text-gray-700 max-w-xs truncate" title={complaint.summary}>
+                  <tr key={complaint.complaint_id} className="border-b border-neutral-100 hover:bg-neutral-50 transition">
+                    <td className="p-4 font-semibold text-neutral-900">{complaint.complaint_id}</td>
+                    <td className="p-4 text-sm text-neutral-600 max-w-xs truncate" title={complaint.summary}>
                       {complaint.summary || '—'}
                     </td>
                     <td className="p-4">
                       {complaint.assigned_department ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
-                          🏛️ {complaint.assigned_department}
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-info-light px-2 py-1 text-xs font-semibold text-info">
+                          <Building2 size={11} /> {complaint.assigned_department}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400">Unassigned</span>
+                        <span className="text-xs text-neutral-400">Unassigned</span>
                       )}
                     </td>
                     <td className="p-4">

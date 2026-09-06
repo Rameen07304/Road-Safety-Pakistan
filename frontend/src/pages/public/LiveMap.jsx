@@ -10,6 +10,7 @@ import { Badge, Button } from '../../components/UI'
 import UpvoteButton from '../../components/UpvoteButton'
 import { useLanguage } from '../../context/LanguageContext'
 import { urgencyColors } from '../../utils/urgencyHelpers'
+import { Search, X, Users, TrendingUp, TrendingDown, Minus, BarChart3, Loader2 } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -34,7 +35,7 @@ const createClusterIcon = (cluster) => {
   const count = cluster.getChildCount()
   const color = getHighestUrgencyColor(cluster.getAllChildMarkers())
   return L.divIcon({
-    html: `<div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35);color:white;font-weight:700;font-size:13px;">${count}</div>`,
+    html: `<div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(28,27,24,0.18);color:white;font-weight:700;font-size:13px;">${count}</div>`,
     className: '',
     iconSize: [40, 40],
   })
@@ -48,9 +49,9 @@ const TYPE_LABELS = {
 }
 
 const PRIORITY_COLORS = {
-  critical: 'bg-red-600 text-white',
-  in_progress: 'bg-amber-500 text-white',
-  pending: 'bg-emerald-600 text-white',
+  critical: 'bg-danger text-white',
+  in_progress: 'bg-urgency-medium text-white',
+  pending: 'bg-success text-white',
 }
 
 const normalizeValue = (value) => String(value || '').toLowerCase().replace(/[_-]+/g, ' ').trim()
@@ -94,6 +95,12 @@ const getPriorityKey = (complaint) => {
 const getStatusClass = (complaint) => {
   const key = getPriorityKey(complaint)
   return PRIORITY_COLORS[key] || PRIORITY_COLORS.pending
+}
+
+const ProgressionIcon = ({ progression }) => {
+  if (progression === 'Worsening') return <TrendingUp size={11} />
+  if (progression === 'Improving') return <TrendingDown size={11} />
+  return <Minus size={11} />
 }
 
 function MapClickHandler({ onMapClick }) {
@@ -167,10 +174,10 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
       <MarkerClusterGroup chunkedLoading iconCreateFunction={createClusterIcon}>
         {complaints.map(complaint => {
           const urgencyLevel = complaint.urgency_level?.toLowerCase() || 'low'
-          const color = complaint.color || urgencyColors[urgencyLevel] || '#2563eb'
+          const color = urgencyColors[urgencyLevel] || urgencyColors.low
           const icon = L.divIcon({
             className: '',
-            html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35)"></span>`,
+            html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(28,27,24,0.18)"></span>`,
             iconSize: [18, 18],
             iconAnchor: [9, 9],
             popupAnchor: [0, -9],
@@ -186,9 +193,9 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
             >
               <Popup>
                 <div className="w-60">
-                  <h3 className="font-bold text-gray-900 mb-1">{complaint.complaint_id}</h3>
+                  <h3 className="font-heading font-bold text-neutral-900 mb-1">{complaint.complaint_id}</h3>
                   <div className="mb-2 flex items-center gap-2">
-                    <Badge variant={complaint.urgency_level?.toLowerCase() || 'default'}>
+                    <Badge variant={urgencyLevel || 'default'}>
                       {complaint.urgency_level} ({complaint.urgency_score}/100)
                     </Badge>
                     <UpvoteButton
@@ -200,23 +207,27 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
                     />
                   </div>
                   {complaint.linked_count > 1 && (
-                    <div className="mb-2 rounded bg-amber-50 border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-800">
-                      👥 {complaint.linked_count} reports linked nearby
+                    <div className="mb-2 rounded-lg bg-accent-light border border-accent/20 px-2.5 py-1.5 text-xs font-semibold text-neutral-700">
+                      <span className="inline-flex items-center gap-1">
+                        <Users size={12} className="text-accent-dark" />
+                        {complaint.linked_count} reports linked nearby
+                      </span>
                       {complaint.cluster_progression && (
-                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
                           complaint.cluster_progression === 'Worsening'
-                            ? 'bg-red-100 text-red-700'
+                            ? 'bg-red-100 text-danger'
                             : complaint.cluster_progression === 'Improving'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-600'
+                              ? 'bg-primary-50 text-primary-600'
+                              : 'bg-neutral-100 text-neutral-500'
                         }`}>
-                          {complaint.cluster_progression === 'Worsening' ? '📈' : complaint.cluster_progression === 'Improving' ? '📉' : '➡️'} {complaint.cluster_progression}
+                          <ProgressionIcon progression={complaint.cluster_progression} />
+                          {complaint.cluster_progression}
                         </span>
                       )}
                     </div>
                   )}
-                  <p className="text-sm text-gray-700 mb-2">{complaint.description}</p>
-                  <p className="text-xs text-gray-600">Location: {complaint.ward || complaint.address || 'Lahore'}</p>
+                  <p className="text-sm text-neutral-600 mb-2">{complaint.description}</p>
+                  <p className="text-xs text-neutral-400">Location: {complaint.ward || complaint.address || 'Lahore'}</p>
                 </div>
               </Popup>
             </Marker>
@@ -288,6 +299,7 @@ export default function LiveMap() {
   useEffect(() => {
     if (!activeComplaintId) return
     if (!filteredComplaints.some((complaint) => complaint.complaint_id === activeComplaintId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing pattern: clear stale selection
       setActiveComplaintId(null)
     }
   }, [filteredComplaints, activeComplaintId])
@@ -335,21 +347,22 @@ export default function LiveMap() {
   return (
     <>
       <Header />
-      <div className="min-h-[calc(100vh-64px)] bg-[#eef6f0]">
-        <div className="bg-white/95 shadow-sm border-b border-green-100 p-4">
+      <div className="min-h-[calc(100vh-64px)] bg-neutral-50">
+        {/* ── Top Bar ── */}
+        <div className="bg-white/95 backdrop-blur-sm shadow-subtle border-b border-neutral-100 p-4">
           <div className="mx-auto max-w-[1600px] flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-2xl font-bold text-gray-900">{t('map_title')}</h1>
+            <h1 className="text-xl font-heading font-bold text-neutral-900">{t('map_title')}</h1>
             <div className="flex flex-wrap items-center gap-3">
               <Badge variant="critical">Critical: {stats.critical}</Badge>
               <Badge variant="high">High: {stats.high}</Badge>
               <Badge variant="medium">Medium: {stats.medium}</Badge>
               <Badge variant="low">Low: {stats.low}</Badge>
-              <div className="flex rounded-full border border-green-100 bg-[#f6fbf7] p-1 text-xs font-semibold">
+              <div className="flex rounded-full border border-neutral-100 bg-neutral-50 p-1 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setViewMode('markers')}
                   aria-pressed={viewMode === 'markers'}
-                  className={`rounded-full px-3 py-1.5 transition ${viewMode === 'markers' ? 'bg-[#173b2b] text-white shadow-sm' : 'text-gray-600 hover:text-[#173b2b]'}`}
+                  className={`rounded-full px-3 py-1.5 transition ${viewMode === 'markers' ? 'bg-primary-800 text-white shadow-subtle' : 'text-neutral-500 hover:text-primary-700'}`}
                 >
                   {t('map_markers')}
                 </button>
@@ -357,7 +370,7 @@ export default function LiveMap() {
                   type="button"
                   onClick={() => setViewMode('heatmap')}
                   aria-pressed={viewMode === 'heatmap'}
-                  className={`rounded-full px-3 py-1.5 transition ${viewMode === 'heatmap' ? 'bg-[#173b2b] text-white shadow-sm' : 'text-gray-600 hover:text-[#173b2b]'}`}
+                  className={`rounded-full px-3 py-1.5 transition ${viewMode === 'heatmap' ? 'bg-primary-800 text-white shadow-subtle' : 'text-neutral-500 hover:text-primary-700'}`}
                 >
                   {t('map_heatmap')}
                 </button>
@@ -367,25 +380,28 @@ export default function LiveMap() {
         </div>
 
         <div className="mx-auto flex min-h-[calc(100vh-120px)] max-w-[1600px] flex-row overflow-hidden">
-          <aside className="w-[285px] flex-shrink-0 border-r border-green-100 bg-white/95 p-4">
+          {/* ── Sidebar ── */}
+          <aside className="w-[285px] flex-shrink-0 border-r border-neutral-100 bg-white/95 p-4">
             <div className="space-y-5">
+              {/* Search */}
               <div>
-                <div className="rounded-lg border border-green-100 bg-[#f6fbf7] px-3 py-2 shadow-sm">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <span>🔎</span>
+                <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 shadow-subtle">
+                  <div className="flex items-center gap-2 text-sm text-neutral-400">
+                    <Search size={15} className="text-neutral-400 flex-shrink-0" />
                     <input
                       type="text"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder={t('map_search_placeholder')}
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
                     />
                   </div>
                 </div>
               </div>
 
+              {/* Hazard Type Filters */}
               <div>
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-500">{t('map_hazard_type')}</div>
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">{t('map_hazard_type')}</div>
                 <div className="flex flex-wrap gap-2">
                   {typeButtons.map((type) => {
                     const active = selectedTypes.includes(type.key)
@@ -394,7 +410,7 @@ export default function LiveMap() {
                         key={type.key}
                         type="button"
                         onClick={() => toggleType(type.key)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold transition ${active ? 'bg-[#dff3e4] text-[#1c4b37] ring-1 ring-[#9fd8ae]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold transition ${active ? 'bg-primary-100 text-primary-700 ring-1 ring-primary-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}
                       >
                         {type.label}
                       </button>
@@ -403,68 +419,69 @@ export default function LiveMap() {
                 </div>
               </div>
 
+              {/* Priority Filters */}
               <div>
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-500">{t('map_priority_status')}</div>
-                <div className="space-y-2 text-sm text-gray-700">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={selectedPriorities.critical} onChange={() => togglePriority('critical')} className="h-4 w-4 rounded border-gray-300 text-[#2f6a4d] focus:ring-[#2f6a4d]" />
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">{t('map_priority_status')}</div>
+                <div className="space-y-2 text-sm text-neutral-600">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={selectedPriorities.critical} onChange={() => togglePriority('critical')} className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-300" />
                     {t('map_critical_urgency')}
                   </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={selectedPriorities.inProgress} onChange={() => togglePriority('inProgress')} className="h-4 w-4 rounded border-gray-300 text-[#2f6a4d] focus:ring-[#2f6a4d]" />
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={selectedPriorities.inProgress} onChange={() => togglePriority('inProgress')} className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-300" />
                     {t('map_in_progress')}
                   </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={selectedPriorities.pending} onChange={() => togglePriority('pending')} className="h-4 w-4 rounded border-gray-300 text-[#2f6a4d] focus:ring-[#2f6a4d]" />
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={selectedPriorities.pending} onChange={() => togglePriority('pending')} className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-300" />
                     {t('map_pending_verification')}
                   </label>
                 </div>
               </div>
 
-              <div className="border-t border-green-100 pt-4">
-                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-500">{t('map_recent_reports')}</div>
+              {/* Recent Reports */}
+              <div className="border-t border-neutral-100 pt-4">
+                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">{t('map_recent_reports')}</div>
                 <div className="space-y-3">
-                  {recentReports.length > 0 ? recentReports.map((complaint) => (
-                    (() => {
-                      const isSelected = activeComplaintId === complaint.complaint_id
-                      const isCritical = getPriorityKey(complaint) === 'critical'
-                      const selectedClass = isSelected
-                        ? 'border-red-600 bg-red-600 text-white shadow-lg shadow-red-200'
-                        : isCritical
-                          ? 'border-red-300 bg-red-50 hover:bg-red-100'
-                          : 'border-gray-200 bg-white hover:bg-gray-50'
+                  {recentReports.length > 0 ? recentReports.map((complaint) => {
+                    const isSelected = activeComplaintId === complaint.complaint_id
+                    const isCritical = getPriorityKey(complaint) === 'critical'
+                    const selectedClass = isSelected
+                      ? 'border-danger bg-danger text-white shadow-lg shadow-red-200'
+                      : isCritical
+                        ? 'border-red-200 bg-red-50 hover:bg-red-100'
+                        : 'border-neutral-200 bg-white hover:bg-neutral-50'
 
-                      return (
+                    return (
                     <button
                       key={complaint.complaint_id}
                       type="button"
                       onClick={() => setActiveComplaintId(complaint.complaint_id)}
-                      className={`w-full rounded-xl border p-3 text-left transition hover:shadow-sm ${selectedClass}`}
+                      className={`w-full rounded-xl border p-3 text-left transition hover:shadow-subtle ${selectedClass}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <Badge variant={isSelected || isCritical ? 'critical' : 'default'} className="text-[10px] px-2 py-1">
                           {String(complaint.urgency_level || complaint.status || 'N/A').toUpperCase()}
                         </Badge>
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${isSelected ? 'bg-white text-red-600' : getStatusClass(complaint)}`}>{complaint.status || 'pending'}</span>
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${isSelected ? 'bg-white text-danger' : getStatusClass(complaint)}`}>{complaint.status || 'pending'}</span>
                       </div>
-                      <div className={`mt-2 text-sm font-semibold ${isSelected ? 'text-white' : 'text-gray-900'}`}>{complaint.description || complaint.complaint_id}</div>
-                      <div className={`mt-1 text-xs ${isSelected ? 'text-red-100' : 'text-gray-500'}`}>{complaint.ward || complaint.address || 'Lahore'}</div>
+                      <div className={`mt-2 text-sm font-semibold ${isSelected ? 'text-white' : 'text-neutral-800'}`}>{complaint.description || complaint.complaint_id}</div>
+                      <div className={`mt-1 text-xs ${isSelected ? 'text-red-100' : 'text-neutral-400'}`}>{complaint.ward || complaint.address || 'Lahore'}</div>
                     </button>
                       )
-                    })()
-                  )) : (
-                    <div className="rounded-xl border border-dashed border-gray-200 p-4 text-sm text-gray-500">
+                  }) : (
+                    <div className="rounded-xl border border-dashed border-neutral-200 p-4 text-sm text-neutral-400">
                       {t('map_no_reports_match')}
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Language Toggle */}
               <div className="pt-3">
                 <button
                   type="button"
                   onClick={toggleLanguage}
-                  className="w-full rounded-lg bg-[#173b2b] px-4 py-3 text-sm font-semibold text-white hover:bg-[#0f281d]"
+                  className="w-full rounded-lg bg-primary-800 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-900 transition"
                 >
                   {t('language_toggle')}
                 </button>
@@ -472,10 +489,11 @@ export default function LiveMap() {
             </div>
           </aside>
 
-          <section className="relative min-w-0 flex-1 overflow-hidden bg-[#eef6f0] h-[calc(100vh-120px)]">
+          {/* ── Map Area ── */}
+          <section className="relative min-w-0 flex-1 overflow-hidden bg-neutral-50 h-[calc(100vh-120px)]">
             {loading ? (
               <div className="flex h-full items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                <Loader2 size={36} className="text-primary-500 animate-spin" />
               </div>
             ) : (
               <div className="absolute inset-0">
@@ -485,17 +503,18 @@ export default function LiveMap() {
               </div>
             )}
 
+            {/* ── Floating Preview Card ── */}
             {activeComplaint && (
-              <div className="absolute left-1/2 top-20 z-20 w-[290px] -translate-x-1/2 overflow-hidden rounded-2xl border border-red-200 bg-white shadow-[0_20px_60px_rgba(27,67,50,0.18)]">
+              <div className="absolute left-1/2 top-20 z-20 w-[290px] -translate-x-1/2 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-elevated">
                 <button
                   type="button"
                   onClick={closeCard}
                   aria-label="Close hazard preview"
                   className="absolute right-2 top-2 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white transition hover:bg-black/60"
                 >
-                  ✕
+                  <X size={14} />
                 </button>
-                <div className="h-28 bg-gradient-to-br from-[#4c3723] via-[#6a4d2d] to-[#2e2117]">
+                <div className="h-28 bg-gradient-to-br from-neutral-600 via-neutral-700 to-neutral-800">
                   {activeComplaint.image_url ? (
                     <img src={activeComplaint.image_url} alt={activeComplaint.complaint_id} className="h-full w-full object-cover" />
                   ) : (
@@ -509,20 +528,20 @@ export default function LiveMap() {
                         <Badge variant="warning" className="px-2 py-1">{(activeComplaint.detected_classes?.[0] || 'Pothole').toUpperCase()}</Badge>
                         <Badge variant={activeComplaint.urgency_level?.toLowerCase() || 'default'} className="px-2 py-1">{(activeComplaint.urgency_level || 'critical').toUpperCase()}</Badge>
                         {activeComplaint.linked_count > 1 && (
-                          <Badge variant="default" className="px-2 py-1 !bg-amber-100 !text-amber-800">👥 {activeComplaint.linked_count} linked</Badge>
+                          <Badge variant="accent" className="px-2 py-1 inline-flex items-center gap-1"><Users size={10} /> {activeComplaint.linked_count} linked</Badge>
                         )}
                       </div>
-                      <h3 className="text-lg font-black text-gray-900 leading-tight">{activeComplaint.description || 'Severely Damaged Road'}</h3>
+                      <h3 className="text-lg font-heading font-bold text-neutral-900 leading-tight">{activeComplaint.description || 'Severely Damaged Road'}</h3>
                     </div>
                   </div>
-                  <div className="mt-3 space-y-1 text-sm text-gray-600">
+                  <div className="mt-3 space-y-1 text-sm text-neutral-500">
                     <div>{activeComplaint.ward || activeComplaint.address || 'Canal Bank Road, near Punjab University'}</div>
                     <div>Anonymous Citizen</div>
-                    <div className="text-[#2f6a4d] font-semibold">{activeComplaint.status || 'In Progress'}</div>
+                    <div className="text-primary-600 font-semibold">{activeComplaint.status || 'In Progress'}</div>
                   </div>
                   <Button
                     type="button"
-                    className="mt-4 w-full !rounded-none !bg-[#173b2b] !py-3 text-sm font-bold hover:!bg-[#0f281d]"
+                    className="mt-4 w-full !rounded-none !bg-primary-800 !py-3 text-sm font-bold hover:!bg-primary-900"
                     onClick={() => navigate(`/complaint/${activeComplaint.complaint_id}`)}
                   >
                     {t('map_view_full_details')}
@@ -531,31 +550,37 @@ export default function LiveMap() {
               </div>
             )}
 
-            <div className="absolute right-4 top-4 z-20 w-[220px] rounded-2xl border border-green-100 bg-white p-4 shadow-lg">
-              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-500">{t('map_active_hazards')}</div>
+            {/* ── Stats Floating Card ── */}
+            <div className="absolute right-4 top-4 z-20 w-[220px] rounded-xl border border-neutral-100 bg-white p-4 shadow-elevated">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+                <BarChart3 size={12} />
+                {t('map_active_hazards')}
+              </div>
               <div className="mt-2 flex items-end gap-3">
-                <div className="text-4xl font-black text-[#173b2b]">{filteredComplaints.length || 142}</div>
+                <div className="text-4xl font-heading font-bold text-neutral-900">{filteredComplaints.length || 142}</div>
                 <div className="text-right text-sm">
-                  <div className="font-semibold text-[#c62d22]">{stats.critical} critical now</div>
-                  <div className="text-gray-500">{t('map_total_reported')}</div>
+                  <div className="font-semibold text-danger">{stats.critical} critical now</div>
+                  <div className="text-neutral-400">{t('map_total_reported')}</div>
                 </div>
               </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-green-100">
-                <div className="h-full w-[75%] rounded-full bg-[#2f6a4d]" />
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-neutral-100">
+                <div className="h-full w-[75%] rounded-full bg-primary-500" />
               </div>
-              <div className="mt-2 text-xs text-gray-500">{resolutionRate || 75}% {t('map_resolution_rate')}</div>
+              <div className="mt-2 text-xs text-neutral-400">{resolutionRate || 75}% {t('map_resolution_rate')}</div>
             </div>
 
-            <div className="absolute left-4 bottom-4 z-20 rounded-2xl border border-green-100 bg-white p-3 shadow-lg">
-              <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-500">{t('map_urgency_legend')}</div>
+            {/* ── Legend ── */}
+            <div className="absolute left-4 bottom-4 z-20 rounded-xl border border-neutral-100 bg-white p-3 shadow-elevated">
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">{t('map_urgency_legend')}</div>
               <div className="space-y-1.5">
-                {['low', 'medium', 'high', 'critical'].map((level) => (
-                  <div key={level} className="flex items-center gap-2 text-xs text-gray-700">
+                {['critical', 'high', 'medium', 'low'].map((level) => (
+                  <div key={level} className="flex items-center gap-2 text-xs text-neutral-600">
                     <span
-                      className="inline-block h-3 w-3 rounded-full border-2 border-white shadow"
+                      className="inline-block h-3 w-3 rounded-full border-2 border-white shadow-subtle"
                       style={{ backgroundColor: urgencyColors[level] }}
                     />
                     {t(`urgency_${level}`)}
+                    <span className="text-[10px] text-neutral-300 font-mono">{urgencyColors[level]}</span>
                   </div>
                 ))}
               </div>

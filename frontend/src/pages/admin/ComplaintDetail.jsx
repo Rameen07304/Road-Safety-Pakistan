@@ -5,6 +5,7 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge, Button, Alert } from '../../components/UI'
 import Toast from '../../components/Toast'
+import { Loader2, ArrowLeft, Image as ImageIcon, Camera, CheckCircle2 } from 'lucide-react'
 
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
@@ -111,7 +112,7 @@ export default function ComplaintDetail() {
       <>
         <Header />
         <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          <Loader2 size={36} className="text-primary-500 animate-spin" />
         </div>
         <Footer />
       </>
@@ -133,13 +134,13 @@ export default function ComplaintDetail() {
   return (
     <>
       <Header />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
         <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-4xl font-bold text-gray-900">{complaint.complaint_id}</h1>
+          <h1 className="text-3xl font-heading font-bold text-neutral-900">{complaint.complaint_id}</h1>
           <Button variant="secondary" onClick={() => navigate('/admin/dashboard')}>
-            ← Back to Dashboard
+            <ArrowLeft size={16} /> Back to Dashboard
           </Button>
         </div>
 
@@ -149,21 +150,24 @@ export default function ComplaintDetail() {
             {/* Photo */}
             {(complaint.image_url || complaint.annotated_image_url || complaint.annotated_image_base64) && (
               <Card>
-                <h3 className="font-bold text-gray-900 mb-4">Image Comparison</h3>
+                <h3 className="font-heading font-bold text-neutral-800 mb-4 flex items-center gap-2">
+                  <ImageIcon size={16} className="text-neutral-400" />
+                  Image Comparison
+                </h3>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {complaint.image_url && (
                     <div>
-                      <p className="text-sm text-gray-600 mb-2">Original photo</p>
-                      <img src={complaint.image_url} alt="Original complaint" className="w-full max-h-96 object-contain rounded-lg" />
+                      <p className="text-sm text-neutral-400 mb-2 font-medium">Original photo</p>
+                      <img src={complaint.image_url} alt="Original complaint" className="w-full max-h-96 object-contain rounded-lg shadow-subtle" />
                     </div>
                   )}
                   {(complaint.annotated_image_url || complaint.annotated_image_base64) && (
                     <div>
-                      <p className="text-sm text-gray-600 mb-2">AI annotated photo</p>
+                      <p className="text-sm text-neutral-400 mb-2 font-medium">AI annotated photo</p>
                       <img
                         src={complaint.annotated_image_url || `data:image/jpeg;base64,${complaint.annotated_image_base64}`}
                         alt="AI detection annotations"
-                        className="w-full max-h-96 object-contain rounded-lg"
+                        className="w-full max-h-96 object-contain rounded-lg shadow-subtle"
                       />
                     </div>
                   )}
@@ -173,15 +177,15 @@ export default function ComplaintDetail() {
 
             {/* Hazard Details */}
             <Card>
-              <h3 className="font-bold text-gray-900 mb-4">Hazard Analysis</h3>
+              <h3 className="font-heading font-bold text-neutral-800 mb-4">Hazard Analysis</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Detected Classes</p>
-                  <p className="text-gray-900 font-semibold">{complaint.detected_classes?.join(', ') || 'N/A'}</p>
+                  <p className="text-sm text-neutral-400 mb-1 font-medium">Detected Classes</p>
+                  <p className="text-neutral-900 font-semibold">{complaint.detected_classes?.join(', ') || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Confidence Scores</p>
-                  <p className="text-gray-900 font-semibold">
+                  <p className="text-sm text-neutral-400 mb-1 font-medium">Confidence Scores</p>
+                  <p className="text-neutral-900 font-semibold">
                     {Object.entries(complaint.confidence_scores || {}).map(([k, v]) => `${k}: ${(Number(v) * 100).toFixed(1)}%`).join(', ') || 'N/A'}
                   </p>
                 </div>
@@ -190,15 +194,15 @@ export default function ComplaintDetail() {
 
             {/* Description */}
             <Card>
-              <h3 className="font-bold text-gray-900 mb-4">Description & Sentiment</h3>
-              <p className="text-gray-700 mb-4">{complaint.description}</p>
+              <h3 className="font-heading font-bold text-neutral-800 mb-4">Description &amp; Sentiment</h3>
+              <p className="text-neutral-600 mb-4">{complaint.description}</p>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Sentiment Analysis</p>
+                  <p className="text-sm text-neutral-400 mb-1 font-medium">Sentiment Analysis</p>
                   <Badge variant="default">{complaint.sentiment}</Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Keywords Found</p>
+                  <p className="text-sm text-neutral-400 mb-1 font-medium">Keywords Found</p>
                   <div className="flex flex-wrap gap-2">
                     {complaint.sentiment_keywords?.map(kw => (
                       <Badge key={kw} variant="default" className="text-xs">{kw}</Badge>
@@ -210,19 +214,19 @@ export default function ComplaintDetail() {
 
             {/* Location */}
             <Card>
-              <h3 className="font-bold text-gray-900 mb-4">Location Details</h3>
+              <h3 className="font-heading font-bold text-neutral-800 mb-4">Location Details</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Address</p>
-                  <p className="text-gray-900">{complaint.address}</p>
+                  <p className="text-sm text-neutral-400 mb-1 font-medium">Address</p>
+                  <p className="text-neutral-900">{complaint.address}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Ward</p>
-                  <p className="text-gray-900">{complaint.ward}</p>
+                  <p className="text-sm text-neutral-400 mb-1 font-medium">Ward</p>
+                  <p className="text-neutral-900">{complaint.ward}</p>
                 </div>
                 <div className="md:col-span-2">
-                  <p className="text-sm text-gray-600 mb-1">Coordinates</p>
-                  <p className="text-gray-900">{Number(complaint.latitude).toFixed(4)}, {Number(complaint.longitude).toFixed(4)}</p>
+                  <p className="text-sm text-neutral-400 mb-1 font-medium">Coordinates</p>
+                  <p className="text-neutral-900">{Number(complaint.latitude).toFixed(4)}, {Number(complaint.longitude).toFixed(4)}</p>
                 </div>
               </div>
             </Card>
@@ -232,9 +236,9 @@ export default function ComplaintDetail() {
           <div className="space-y-6">
             {/* Urgency */}
             <Card>
-              <h3 className="font-bold text-gray-900 mb-4">Urgency Score</h3>
+              <h3 className="font-heading font-bold text-neutral-800 mb-4">Urgency Score</h3>
               <div className="text-center">
-                <div className="text-5xl font-bold text-green-600 mb-2">{complaint.urgency_score}</div>
+                <div className="text-5xl font-heading font-bold text-primary-600 mb-2">{complaint.urgency_score}</div>
                 <Badge variant={complaint.urgency_level?.toLowerCase()} className="w-full text-center justify-center">
                   {complaint.urgency_level}
                 </Badge>
@@ -243,11 +247,11 @@ export default function ComplaintDetail() {
 
             {/* Status Update */}
             <Card>
-              <h3 className="font-bold text-gray-900 mb-4">Update Status</h3>
+              <h3 className="font-heading font-bold text-neutral-800 mb-4">Update Status</h3>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg mb-4 focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition"
               >
                 <option value="submitted">Submitted</option>
                 <option value="verified">Verified</option>
@@ -257,27 +261,30 @@ export default function ComplaintDetail() {
               </select>
 
               {status === 'resolved' && (
-                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
-                  <p className="text-sm font-semibold text-gray-800 mb-2">
+                <div className="mb-4 rounded-lg border border-primary-100 bg-primary-50 p-3">
+                  <p className="text-sm font-semibold text-neutral-700 mb-2">
                     Upload an "after" photo showing the resolved hazard
                   </p>
                   {complaint.resolved_image_url && !resolvedPreview && (
                     <div className="mb-2">
-                      <p className="text-xs text-gray-600 mb-1">Current after photo:</p>
+                      <p className="text-xs text-neutral-400 mb-1">Current after photo:</p>
                       <img src={complaint.resolved_image_url} alt="Current resolved" className="h-24 rounded-lg object-cover" />
                     </div>
                   )}
                   {resolvedPreview ? (
                     <div className="mb-2">
                       <img src={resolvedPreview} alt="After preview" className="h-24 rounded-lg object-cover" />
-                      <p className="mt-1 text-xs text-green-700 font-semibold">✓ Photo selected</p>
+                      <p className="mt-1 text-xs text-success font-semibold flex items-center gap-1">
+                        <CheckCircle2 size={12} /> Photo selected
+                      </p>
                     </div>
                   ) : (
                     <div
-                      className="cursor-pointer rounded-lg border-2 border-dashed border-green-300 p-4 text-center text-sm text-gray-600 hover:border-green-500"
+                      className="cursor-pointer rounded-lg border-2 border-dashed border-neutral-200 p-4 text-center text-sm text-neutral-500 hover:border-primary-300 hover:bg-primary-50/30 transition"
                       onClick={() => resolvedFileInputRef.current?.click()}
                     >
-                      📷 Click to select after photo
+                      <Camera size={20} className="mx-auto mb-1 text-neutral-400" />
+                      Click to select after photo
                     </div>
                   )}
                   <input
@@ -288,12 +295,12 @@ export default function ComplaintDetail() {
                     className="hidden"
                   />
                   {resolvedUploadError && (
-                    <p className="mt-2 text-xs text-red-600">{resolvedUploadError}</p>
+                    <p className="mt-2 text-xs text-danger">{resolvedUploadError}</p>
                   )}
                   {uploadingResolved && (
-                    <p className="mt-2 text-xs text-gray-600">Uploading after photo...</p>
+                    <p className="mt-2 text-xs text-neutral-500">Uploading after photo...</p>
                   )}
-                  <p className="mt-2 text-xs text-gray-500">Optional, but recommended when marking a complaint resolved.</p>
+                  <p className="mt-2 text-xs text-neutral-400">Optional, but recommended when marking a complaint resolved.</p>
                 </div>
               )}
 
@@ -301,7 +308,7 @@ export default function ComplaintDetail() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Admin notes..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none mb-4"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg resize-none mb-4 focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition"
                 rows="4"
               ></textarea>
 
@@ -312,10 +319,10 @@ export default function ComplaintDetail() {
 
             {/* Metadata */}
             <Card>
-              <h3 className="font-bold text-gray-900 mb-4">Metadata</h3>
+              <h3 className="font-heading font-bold text-neutral-800 mb-4">Metadata</h3>
               <div className="space-y-2 text-sm">
-                <p><strong>Reported:</strong> {new Date(complaint.submitted_at).toLocaleDateString()}</p>
-                <p><strong>Reporter:</strong> {complaint.citizen_name || 'Citizen'}</p>
+                <p><strong className="text-neutral-600">Reported:</strong> <span className="text-neutral-700">{new Date(complaint.submitted_at).toLocaleDateString()}</span></p>
+                <p><strong className="text-neutral-600">Reporter:</strong> <span className="text-neutral-700">{complaint.citizen_name || 'Citizen'}</span></p>
               </div>
             </Card>
           </div>

@@ -3,6 +3,7 @@ import { api } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge } from '../../components/UI'
+import { Loader2 } from 'lucide-react'
 
 const WARDS = [
   'Lahore Cant', 'Data Ganj Baksh', 'Allama Iqbal', 'Azad Pul', 'Mall',
@@ -33,7 +34,7 @@ export default function WardAnalytics() {
       <>
         <Header />
         <div className="flex justify-center items-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          <Loader2 size={36} className="text-primary-500 animate-spin" />
         </div>
         <Footer />
       </>
@@ -43,20 +44,20 @@ export default function WardAnalytics() {
   return (
     <>
       <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Ward Performance Analytics</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <h1 className="text-3xl font-heading font-bold text-neutral-900 mb-8">Ward Performance Analytics</h1>
 
-        <Card className="overflow-x-auto">
+        <Card className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left p-4 font-bold">Ward</th>
-                <th className="text-center p-4 font-bold">Total</th>
-                <th className="text-center p-4 font-bold">Resolved</th>
-                <th className="text-center p-4 font-bold">Pending</th>
-                <th className="text-center p-4 font-bold">Critical</th>
-                <th className="text-center p-4 font-bold">Avg. Days</th>
-                <th className="text-center p-4 font-bold">Resolution %</th>
+              <tr className="border-b border-neutral-100 bg-neutral-50">
+                <th className="text-left p-4 font-heading font-bold text-neutral-700">Ward</th>
+                <th className="text-center p-4 font-heading font-bold text-neutral-700">Total</th>
+                <th className="text-center p-4 font-heading font-bold text-neutral-700">Resolved</th>
+                <th className="text-center p-4 font-heading font-bold text-neutral-700">Pending</th>
+                <th className="text-center p-4 font-heading font-bold text-neutral-700">Critical</th>
+                <th className="text-center p-4 font-heading font-bold text-neutral-700">Avg. Days</th>
+                <th className="text-center p-4 font-heading font-bold text-neutral-700">Resolution %</th>
               </tr>
             </thead>
             <tbody>
@@ -72,26 +73,26 @@ export default function WardAnalytics() {
                 const resolutionPercentage = stats.total > 0 ? ((stats.resolved / stats.total) * 100).toFixed(1) : 0
 
                 return (
-                  <tr key={item.ward} className="border-b hover:bg-gray-50">
-                    <td className="p-4 font-semibold">{item.ward}</td>
-                    <td className="p-4 text-center">{stats.total}</td>
-                    <td className="p-4 text-center text-green-600 font-semibold">{stats.resolved}</td>
-                    <td className="p-4 text-center text-orange-600 font-semibold">{stats.pending}</td>
+                  <tr key={item.ward} className="border-b border-neutral-100 hover:bg-neutral-50 transition">
+                    <td className="p-4 font-semibold text-neutral-900">{item.ward}</td>
+                    <td className="p-4 text-center text-neutral-700">{stats.total}</td>
+                    <td className="p-4 text-center text-success font-semibold">{stats.resolved}</td>
+                    <td className="p-4 text-center text-urgency-medium font-semibold">{stats.pending}</td>
                     <td className="p-4 text-center">
                       {stats.criticalCount > 0 && (
                         <Badge variant="critical">{stats.criticalCount}</Badge>
                       )}
                     </td>
-                    <td className="p-4 text-center">{stats.avgResolutionDays} days</td>
+                    <td className="p-4 text-center text-neutral-600">{stats.avgResolutionDays} days</td>
                     <td className="p-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div className="w-24 bg-neutral-100 rounded-full h-2">
                           <div
-                            className="bg-green-600 h-2 rounded-full"
+                            className="bg-primary-500 h-2 rounded-full"
                             style={{ width: `${resolutionPercentage}%` }}
                           ></div>
                         </div>
-                        <span className="font-semibold">{resolutionPercentage}%</span>
+                        <span className="font-semibold text-neutral-700">{resolutionPercentage}%</span>
                       </div>
                     </td>
                   </tr>

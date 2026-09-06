@@ -9,13 +9,14 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge, Button } from '../../components/UI'
 import { urgencyColors, statusLabels, statusClasses, formatDate } from '../../utils/urgencyHelpers'
+import { Loader2, Inbox, Map as MapIcon } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
 
 const markerIcon = (urgencyLevel) => {
-  const color = urgencyColors[urgencyLevel?.toLowerCase()] || '#2563eb'
+  const color = urgencyColors[urgencyLevel?.toLowerCase()] || urgencyColors.low
   return L.divIcon({
     className: '',
-    html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35)"></span>`,
+    html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(28,27,24,0.18)"></span>`,
     iconSize: [18, 18],
     iconAnchor: [9, 9],
     popupAnchor: [0, -9],
@@ -24,9 +25,9 @@ const markerIcon = (urgencyLevel) => {
 
 function StatCard({ label, value, accent }) {
   return (
-    <Card className="text-center">
-      <div className={`text-4xl font-black ${accent}`}>{value}</div>
-      <div className="mt-1 text-sm font-semibold text-gray-600">{label}</div>
+    <Card variant="flat" className="text-center">
+      <div className={`text-4xl font-heading font-bold ${accent}`}>{value}</div>
+      <div className="mt-1 text-sm font-semibold text-neutral-500">{label}</div>
     </Card>
   )
 }
@@ -64,59 +65,61 @@ export default function Dashboard() {
   return (
     <>
       <Header />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('dash_title')}</h1>
-          <p className="text-gray-600">{t('dash_welcome')}{user?.full_name ? `, ${user.full_name}` : ''}. {t('dash_overview')}</p>
+          <h1 className="text-3xl font-heading font-bold text-neutral-900 mb-2">{t('dash_title')}</h1>
+          <p className="text-neutral-500">{t('dash_welcome')}{user?.full_name ? `, ${user.full_name}` : ''}. {t('dash_overview')}</p>
         </div>
 
         {loading ? (
           <div className="flex justify-center items-center h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            <Loader2 size={36} className="text-primary-500 animate-spin" />
           </div>
         ) : error ? (
           <Card className="text-center py-12">
-            <p className="text-red-600 font-semibold">{error}</p>
+            <p className="text-danger font-semibold">{error}</p>
           </Card>
         ) : (
           <div className="space-y-8">
             {/* Statistics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard label={t('dash_total_submitted')} value={stats.total} accent="text-gray-900" />
-              <StatCard label={t('dash_resolved')} value={stats.resolved} accent="text-green-600" />
-              <StatCard label={t('dash_in_progress')} value={stats.in_progress} accent="text-amber-600" />
-              <StatCard label={t('dash_pending')} value={stats.pending} accent="text-blue-600" />
+              <StatCard label={t('dash_total_submitted')} value={stats.total} accent="text-neutral-900" />
+              <StatCard label={t('dash_resolved')} value={stats.resolved} accent="text-success" />
+              <StatCard label={t('dash_in_progress')} value={stats.in_progress} accent="text-urgency-medium" />
+              <StatCard label={t('dash_pending')} value={stats.pending} accent="text-info" />
             </div>
 
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Most recent complaint */}
               <Card>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">{t('dash_most_recent')}</h2>
+                <h2 className="text-lg font-heading font-bold text-neutral-800 mb-4">{t('dash_most_recent')}</h2>
                 {recent ? (
                   <div
-                    className="cursor-pointer rounded-lg border border-gray-200 p-4 hover:shadow-md transition"
+                    className="cursor-pointer rounded-lg border border-neutral-200 p-4 hover:shadow-base hover:border-primary-200 transition"
                     onClick={() => navigate(`/complaint/${recent.complaint_id}`)}
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-bold text-gray-900">{recent.complaint_id}</h3>
+                      <h3 className="font-heading font-bold text-neutral-900">{recent.complaint_id}</h3>
                       <Badge variant={recent.urgency_level?.toLowerCase()}>
                         {recent.urgency_level} ({recent.urgency_score}/100)
                       </Badge>
                     </div>
-                    <p className="text-gray-700 mb-3 line-clamp-2">
+                    <p className="text-neutral-600 mb-3 line-clamp-2">
                       {recent.detected_classes?.join(', ') || 'Hazard report'}
                     </p>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
                       <span>Filed: {formatDate(recent.submitted_at)}</span>
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${statusClasses[recent.status] || 'bg-gray-100 text-gray-800'}`}>
+                      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${statusClasses[recent.status] || 'bg-neutral-100 text-neutral-700'}`}>
                         {statusLabels[recent.status] || recent.status}
                       </span>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <div className="text-5xl mb-3">📭</div>
-                    <p className="text-gray-600 mb-4">{t('dash_no_complaints')}</p>
+                    <div className="w-16 h-16 bg-neutral-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <Inbox size={28} className="text-neutral-300" />
+                    </div>
+                    <p className="text-neutral-500 mb-4">{t('dash_no_complaints')}</p>
                     <Button onClick={() => navigate('/report')}>{t('dash_report_first')}</Button>
                   </div>
                 )}
@@ -125,7 +128,7 @@ export default function Dashboard() {
               {/* Personal complaint map */}
               <Card className="p-0 overflow-hidden">
                 <div className="p-6 pb-0">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">{t('dash_my_locations')}</h2>
+                  <h2 className="text-lg font-heading font-bold text-neutral-800 mb-4">{t('dash_my_locations')}</h2>
                 </div>
                 {locations.length ? (
                   <div className="h-80">
@@ -142,8 +145,8 @@ export default function Dashboard() {
                         >
                           <Popup>
                             <div className="text-sm">
-                              <p className="font-bold">{loc.complaint_id}</p>
-                              <p>{statusLabels[loc.status] || loc.status}</p>
+                              <p className="font-heading font-bold text-neutral-900">{loc.complaint_id}</p>
+                              <p className="text-neutral-600">{statusLabels[loc.status] || loc.status}</p>
                             </div>
                           </Popup>
                         </Marker>
@@ -152,8 +155,10 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-80 px-6 text-center">
-                    <div className="text-5xl mb-3">🗺️</div>
-                    <p className="text-gray-600">{t('dash_no_locations')}</p>
+                    <div className="w-16 h-16 bg-neutral-50 rounded-xl flex items-center justify-center mb-4">
+                      <MapIcon size={28} className="text-neutral-300" />
+                    </div>
+                    <p className="text-neutral-500">{t('dash_no_locations')}</p>
                   </div>
                 )}
               </Card>

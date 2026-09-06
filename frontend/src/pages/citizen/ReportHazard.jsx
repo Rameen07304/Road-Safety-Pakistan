@@ -5,20 +5,21 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Button, Alert, Card } from '../../components/UI'
 import Toast from '../../components/Toast'
-
-/* eslint-disable no-unused-vars */
+import {
+  Camera, MapPin, FileText, CheckCircle2, ArrowLeft, ArrowRight,
+  Lightbulb, Locate, Send, ImagePlus,
+} from 'lucide-react'
 
 const WARDS = [
   'Lahore Cant', 'Data Ganj Baksh', 'Allama Iqbal', 'Azad Pul', 'Mall',
   'Johar Town', 'Shadbagh', 'Ravi', 'Thokar Niaz Baig', 'Wagha', 'Gulshan Ravi'
 ]
 
-const HAZARD_TYPES = [
-  { id: 'pothole', label: 'Pothole', icon: '🕳️' },
-  { id: 'open_manhole', label: 'Open Manhole', icon: '🔓' },
-  { id: 'broken_manhole', label: 'Broken Manhole', icon: '⚠️' },
-  { id: 'speed_bump', label: 'Damaged Speed Bump', icon: '🏁' },
-  { id: 'garbage', label: 'Garbage', icon: '🗑️' },
+const STEPS = [
+  { num: 1, label: 'Photo',    icon: Camera },
+  { num: 2, label: 'Location', icon: MapPin },
+  { num: 3, label: 'Details',  icon: FileText },
+  { num: 4, label: 'Review',   icon: CheckCircle2 },
 ]
 
 export default function ReportHazard() {
@@ -169,96 +170,161 @@ export default function ReportHazard() {
   return (
     <>
       <Header />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {toast && <Toast {...toast} onClose={() => setToast(null)} />}
         {error && <Alert message={error} type="error" className="mb-6" />}
 
-        <div className="mb-12">
-          <div className="flex justify-between mb-8">
-            {[1, 2, 3, 4].map((s) => (
-              <div key={s} className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white mb-2 ${
-                  s <= step ? 'bg-green-600' : 'bg-gray-300'
-                }`}>
-                  {s}
+        {/* ── Step Wizard ── */}
+        <div className="mb-10">
+          <div className="flex items-start justify-between relative">
+            {/* Connecting line behind the circles */}
+            <div className="absolute top-5 left-[12%] right-[12%] h-0.5 bg-neutral-100 rounded-full" />
+            <div
+              className="absolute top-5 left-[12%] h-0.5 bg-primary-500 rounded-full transition-all duration-500"
+              style={{ width: `${((step - 1) / 3) * 76}%` }}
+            />
+
+            {STEPS.map(({ num, label, icon: Icon }) => {
+              const isCompleted = num < step
+              const isActive    = num === step
+
+              return (
+                <div key={num} className="flex flex-col items-center relative z-10" style={{ width: '25%' }}>
+                  {/* Circle */}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300 ${
+                    isCompleted
+                      ? 'bg-primary-500 text-white'
+                      : isActive
+                        ? 'bg-primary-500 text-white shadow-base'
+                        : 'bg-neutral-100 text-neutral-400'
+                  }`}>
+                    {isCompleted
+                      ? <CheckCircle2 size={18} />
+                      : <Icon size={18} strokeWidth={isActive ? 2.5 : 1.5} />
+                    }
+                  </div>
+                  {/* Label */}
+                  <span className={`text-xs mt-2 font-medium ${
+                    isActive ? 'text-primary-600' : isCompleted ? 'text-primary-500' : 'text-neutral-400'
+                  }`}>
+                    {label}
+                  </span>
                 </div>
-                <span className="text-sm text-gray-600">
-                  {s === 1 ? 'Photo' : s === 2 ? 'Location' : s === 3 ? 'Details' : 'Review'}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="w-full bg-gray-200 h-1 rounded-full">
-            <div className="bg-green-600 h-1 rounded-full transition-all" style={{ width: `${(step - 1) * 33.33}%` }}></div>
+              )
+            })}
           </div>
         </div>
 
+        {/* ── Success State ── */}
         {success ? (
-          <Card className="text-center py-12">
-            <div className="text-6xl mb-4">✓</div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Thank You!</h2>
-            <p className="text-gray-600 mb-6">
+          <Card variant="elevated" className="text-center py-14">
+            <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-5">
+              <CheckCircle2 size={36} className="text-success" />
+            </div>
+            <h2 className="text-2xl font-heading font-bold text-neutral-900 mb-2">Thank You!</h2>
+            <p className="text-neutral-500 max-w-sm mx-auto">
               Your complaint has been submitted successfully. You'll be redirected to track your complaint.
             </p>
           </Card>
         ) : (
           <>
+            {/* ── Step 1: Upload Photo ── */}
             {step === 1 && (
               <Card>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Step 1: Upload Photo</h2>
-                <div className="border-2 border-dashed border-green-300 rounded-lg p-12 text-center hover:border-green-600 transition cursor-pointer"
-                     onClick={() => fileInputRef.current?.click()}>
+                <h2 className="text-xl font-heading font-bold text-neutral-900 mb-6 flex items-center gap-2.5">
+                  <Camera size={20} className="text-primary-500" />
+                  Upload Photo
+                </h2>
+                <div
+                  className="border-2 border-dashed border-neutral-200 rounded-xl p-10 text-center hover:border-primary-300 hover:bg-primary-50/30 transition cursor-pointer group"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   {imagePreview ? (
                     <div>
-                      <img src={imagePreview} alt="Preview" className="max-w-xs max-h-64 mx-auto rounded-lg mb-4" />
-                      <p className="text-green-600 font-semibold">Photo selected!</p>
+                      <img src={imagePreview} alt="Preview" className="max-w-xs max-h-64 mx-auto rounded-lg mb-4 shadow-subtle" />
+                      <p className="text-primary-600 font-semibold flex items-center justify-center gap-1.5">
+                        <CheckCircle2 size={16} />
+                        Photo selected
+                      </p>
                     </div>
                   ) : (
                     <div>
-                      <div className="text-5xl mb-4">📸</div>
-                      <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
+                      <div className="w-16 h-16 bg-neutral-100 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-100 transition">
+                        <ImagePlus size={28} className="text-neutral-400 group-hover:text-primary-500 transition" />
+                      </div>
+                      <p className="text-neutral-600 font-medium mb-1">Click to upload or drag and drop</p>
+                      <p className="text-neutral-400 text-sm">JPG, PNG up to 10 MB</p>
                     </div>
                   )}
                 </div>
+                {imageUrlUploading && uploadProgress > 0 && (
+                  <div className="mt-4">
+                    <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
+                      <div className="bg-primary-500 h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                    <p className="text-xs text-neutral-400 mt-1">Uploading: {uploadProgress}%</p>
+                  </div>
+                )}
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
               </Card>
             )}
 
+            {/* ── Step 2: Confirm Location ── */}
             {step === 2 && (
               <Card>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Step 2: Confirm Location</h2>
+                <h2 className="text-xl font-heading font-bold text-neutral-900 mb-6 flex items-center gap-2.5">
+                  <MapPin size={20} className="text-primary-500" />
+                  Confirm Location
+                </h2>
                 <div className="space-y-4">
-                  <Button variant="secondary" className="w-full" onClick={handleGeoLocation}>
-                    📍 Detect My Current Location
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={handleGeoLocation}
+                  >
+                    <Locate size={16} />
+                    Detect My Current Location
                   </Button>
-                  <select name="ward" value={formData.ward} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" required>
+
+                  <select name="ward" value={formData.ward} onChange={handleChange} className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition" required>
                     <option value="">Choose a ward...</option>
                     {WARDS.map(w => <option key={w} value={w}>{w}</option>)}
                   </select>
-                  <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Street Address" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
-                  <div className="flex gap-4">
-                    <Button variant="secondary" className="flex-1" onClick={() => setStep(1)}>← Back</Button>
-                    <Button className="flex-1" onClick={() => setStep(3)}>Next →</Button>
+                  <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Street Address" className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition" />
+
+                  <div className="flex gap-4 pt-2">
+                    <Button variant="secondary" className="flex-1" onClick={() => setStep(1)}>
+                      <ArrowLeft size={16} /> Back
+                    </Button>
+                    <Button className="flex-1" onClick={() => setStep(3)}>
+                      Next <ArrowRight size={16} />
+                    </Button>
                   </div>
                 </div>
               </Card>
             )}
 
+            {/* ── Step 3: Describe the Hazard ── */}
             {step === 3 && (
               <Card>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Step 3: Describe the Hazard</h2>
+                <h2 className="text-xl font-heading font-bold text-neutral-900 mb-6 flex items-center gap-2.5">
+                  <FileText size={20} className="text-primary-500" />
+                  Describe the Hazard
+                </h2>
 
                 {/* Smart description suggestion */}
                 {detectedClasses.length > 0 && !formData.description && (
-                  <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
-                    <span className="text-xl">💡</span>
-                    <p className="flex-1 text-sm text-blue-800">
-                      <strong>Suggestion:</strong>{' '}
+                  <div className="mb-5 flex items-center gap-3 rounded-lg border border-info/20 bg-info-light px-4 py-3">
+                    <div className="w-8 h-8 bg-info/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Lightbulb size={16} className="text-info" />
+                    </div>
+                    <p className="flex-1 text-sm text-neutral-700">
+                      <strong className="text-info">Suggestion:</strong>{' '}
                       {detectedClasses[0].replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())} reported in {formData.ward || 'your'} area
                     </p>
                     <button
                       type="button"
-                      className="rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white hover:bg-blue-700 transition"
+                      className="rounded-full bg-info px-3 py-1.5 text-xs font-bold text-white hover:bg-info/90 transition flex-shrink-0"
                       onClick={() => {
                         const hazard = detectedClasses[0].replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
                         setFormData(prev => ({
@@ -272,30 +338,70 @@ export default function ReportHazard() {
                   </div>
                 )}
 
-                <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Describe the hazard..." className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none mb-4" rows="5" required></textarea>
-                <div className="flex gap-4">
-                  <Button variant="secondary" className="flex-1" onClick={() => setStep(2)}>← Back</Button>
-                  <Button className="flex-1" onClick={() => setStep(4)}>Review →</Button>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Describe the hazard..."
+                  className="w-full px-4 py-3 border border-neutral-200 rounded-lg resize-none mb-4 focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition"
+                  rows="5"
+                  required
+                />
+                <div className="flex gap-4 pt-2">
+                  <Button variant="secondary" className="flex-1" onClick={() => setStep(2)}>
+                    <ArrowLeft size={16} /> Back
+                  </Button>
+                  <Button className="flex-1" onClick={() => setStep(4)}>
+                    Review <ArrowRight size={16} />
+                  </Button>
                 </div>
               </Card>
             )}
 
+            {/* ── Step 4: Review & Submit ── */}
             {step === 4 && (
               <Card>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Step 4: Review & Submit</h2>
-                {imagePreview && <img src={imagePreview} alt="Review" className="max-w-xs max-h-48 rounded-lg mb-4" />}
-                <p className="text-gray-900 mb-4">{formData.description}</p>
+                <h2 className="text-xl font-heading font-bold text-neutral-900 mb-6 flex items-center gap-2.5">
+                  <CheckCircle2 size={20} className="text-primary-500" />
+                  Review &amp; Submit
+                </h2>
+
+                {imagePreview && (
+                  <img src={imagePreview} alt="Review" className="max-w-xs max-h-48 rounded-lg mb-4 shadow-subtle" />
+                )}
+
+                <div className="bg-neutral-50 rounded-lg p-4 mb-4 space-y-2">
+                  <p className="text-neutral-800">{formData.description}</p>
+                  {formData.ward && (
+                    <p className="text-sm text-neutral-500">
+                      <span className="font-medium">Ward:</span> {formData.ward}
+                    </p>
+                  )}
+                  {formData.address && (
+                    <p className="text-sm text-neutral-500">
+                      <span className="font-medium">Address:</span> {formData.address}
+                    </p>
+                  )}
+                  <p className="text-sm text-neutral-500">
+                    <span className="font-medium">Coords:</span> {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
+                  </p>
+                </div>
+
                 {uploadProgress > 0 && (
                   <div className="mb-4">
-                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                      <div className="bg-green-600 h-3" style={{ width: `${uploadProgress}%` }} />
+                    <div className="w-full bg-neutral-100 rounded-full h-2.5 overflow-hidden">
+                      <div className="bg-primary-500 h-2.5 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">Uploading image: {uploadProgress}%</p>
+                    <p className="text-sm text-neutral-500 mt-1">Uploading image: {uploadProgress}%</p>
                   </div>
                 )}
-                <div className="flex gap-4">
-                  <Button variant="secondary" className="flex-1" onClick={() => setStep(3)}>← Back</Button>
-                  <Button className="flex-1" loading={loading} onClick={handleSubmit}>✓ Submit</Button>
+                <div className="flex gap-4 pt-2">
+                  <Button variant="secondary" className="flex-1" onClick={() => setStep(3)}>
+                    <ArrowLeft size={16} /> Back
+                  </Button>
+                  <Button className="flex-1" loading={loading} onClick={handleSubmit}>
+                    <Send size={16} /> Submit
+                  </Button>
                 </div>
               </Card>
             )}

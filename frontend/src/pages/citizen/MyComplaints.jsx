@@ -5,6 +5,7 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge, Button } from '../../components/UI'
 import UpvoteButton from '../../components/UpvoteButton'
+import { Loader2, Inbox, Building2 } from 'lucide-react'
 
 export default function MyComplaints() {
   const [complaints, setComplaints] = useState([])
@@ -36,10 +37,10 @@ export default function MyComplaints() {
   return (
     <>
       <Header />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">My Complaints</h1>
-          <p className="text-gray-600">Track all your reported road hazards and their status</p>
+          <h1 className="text-3xl font-heading font-bold text-neutral-900 mb-2">My Complaints</h1>
+          <p className="text-neutral-500">Track all your reported road hazards and their status</p>
         </div>
 
         {/* Filter Buttons */}
@@ -52,48 +53,50 @@ export default function MyComplaints() {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`px-4 py-2 rounded-lg font-semibold transition ${
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
                 filter === f.id
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
-              {f.label} <span className="ml-2 bg-gray-800 bg-opacity-20 px-2 py-1 rounded">{f.count}</span>
+              {f.label} <span className={`ml-2 px-2 py-0.5 rounded ${filter === f.id ? 'bg-white/20' : 'bg-neutral-200'}`}>{f.count}</span>
             </button>
           ))}
         </div>
 
         {loading ? (
           <div className="flex justify-center items-center h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            <Loader2 size={36} className="text-primary-500 animate-spin" />
           </div>
         ) : filteredComplaints.length === 0 ? (
           <Card className="text-center py-12">
-            <div className="text-6xl mb-4">📭</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Complaints Yet</h2>
-            <p className="text-gray-600 mb-6">You haven't reported any road hazards yet.</p>
+            <div className="w-16 h-16 bg-neutral-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Inbox size={28} className="text-neutral-300" />
+            </div>
+            <h2 className="text-2xl font-heading font-bold text-neutral-900 mb-2">No Complaints Yet</h2>
+            <p className="text-neutral-500 mb-6">You haven't reported any road hazards yet.</p>
             <Button onClick={() => navigate('/report')}>Report Your First Hazard</Button>
           </Card>
         ) : (
           <div className="space-y-4">
             {filteredComplaints.map(complaint => (
-              <Card key={complaint.complaint_id} className="cursor-pointer hover:shadow-lg transition" onClick={() => navigate(`/complaint/${complaint.complaint_id}`)}>
+              <Card key={complaint.complaint_id} className="cursor-pointer hover:shadow-base transition" onClick={() => navigate(`/complaint/${complaint.complaint_id}`)}>
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-bold text-gray-900">{complaint.complaint_id}</h3>
+                      <h3 className="font-heading font-bold text-neutral-900">{complaint.complaint_id}</h3>
                       <Badge variant={`${complaint.urgency_level.toLowerCase()}`}>
                         {complaint.urgency_level} (Score: {complaint.urgency_score}/100)
                       </Badge>
                     </div>
-                    <p className="text-gray-700 mb-2 line-clamp-2">{complaint.description}</p>
-                    <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+                    <p className="text-neutral-600 mb-2 line-clamp-2">{complaint.description}</p>
+                    <div className="flex flex-wrap gap-3 text-sm text-neutral-500">
                       <span>Location: {complaint.ward || 'N/A'}</span>
                       <span>Date: {new Date(complaint.submitted_at).toLocaleDateString()}</span>
                       <span>AI: {complaint.detected_classes?.join(', ') || 'Analyzing...'}</span>
                       {complaint.assigned_department && (
-                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                          🏛️ {complaint.assigned_department}
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-info-light px-2 py-0.5 text-xs font-semibold text-info">
+                          <Building2 size={11} /> {complaint.assigned_department}
                         </span>
                       )}
                     </div>
