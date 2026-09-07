@@ -22,6 +22,7 @@
 - [Design System](#-design-system)
 - [Project Structure](#-project-structure)
 - [API Endpoints](#-api-endpoints)
+- [Security Notes](#-security-notes)
 - [Troubleshooting](#-troubleshooting)
 - [Team](#-team)
 
@@ -399,6 +400,36 @@ Base URL: `http://localhost:8000`
 | POST   | `complaints/<id>/reject/`         | Admin | Reject a flagged report  |
 
 Django admin UI is at `/admin-rsp-secure/` (configurable via `ADMIN_URL`).
+
+---
+
+## 🔒 Security Notes
+
+This repository is public. Everything below is deliberate.
+
+**What is never committed**
+
+`.gitignore` excludes `.env` and every `.env.*` variant at any depth, plus
+`*.pem`, `*.key`, `*.p12`, `id_rsa*`, `credentials.json` and
+`service-account*.json`. The single intentional exception is `.env.example`,
+which holds placeholders only. No real `.env` has ever been committed on any
+branch, and no secret appears anywhere in the git history.
+
+**Configuration you must set yourself**
+
+| Variable | Notes |
+|----------|-------|
+| `SECRET_KEY` | Required. `settings/base.py` raises if it is missing rather than falling back to a default. |
+| `ADMIN_PASSWORD` | Required. `createadmin` refuses to run without it and never prints it. |
+| `CLOUDINARY_*` | Optional locally; image uploads fail without it, complaints still save. |
+| `ADMIN_URL` | The committed default gives no obscurity in a public repo — change it for a real deployment. |
+
+**Production settings** (`core/settings/prod.py`) force `DEBUG = False`,
+require `ALLOWED_HOSTS`, and enable SSL redirect, HSTS, and secure session and
+CSRF cookies.
+
+**Known gap:** `/api/auth/login/` has no rate limiting, so password attempts
+are unthrottled. Add a DRF throttle before exposing this to real users.
 
 ---
 

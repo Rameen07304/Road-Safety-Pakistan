@@ -26,16 +26,23 @@ backend/staticfiles/
 *.bin
 
 # Environment variables — NEVER commit these
+# .env.example is the one intentional exception (see the negation below).
 .env
-.env.local
-.env.production
-.env.staging
-.env.development
+.env.*
 **/.env
-**/.env.local
-backend/.env
-frontend/.env
-frontend/.env.local
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Secrets and keys of any kind
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa*
+credentials.json
+service-account*.json
 
 # Node
 node_modules/
