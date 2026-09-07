@@ -72,15 +72,59 @@ FRUSTRATION_KEYWORDS = [
     "pathetic",
 ]
 
+
+# Urdu-script equivalents. Voice dictation returns Urdu script, not Roman
+# transliteration, so without these an injury reported by speech scored
+# neutral and was triaged well below the same report typed in Roman Urdu.
+URDU_EMERGENCY_KEYWORDS = [
+    "حادثہ",
+    "زخمی",
+    "ہلاک",
+    "موت",
+    "مر گیا",
+    "خون",
+    "ایمبولینس",
+    "ہسپتال",
+    "ایمرجنسی",
+    "فوری",
+    "گر گیا",
+]
+
+URDU_DANGER_KEYWORDS = [
+    "خطرہ",
+    "خطرناک",
+    "اندھیرا",
+    "رات کو",
+    "نظر نہیں",
+    "گرا",
+    "پھسل",
+    "بچے",
+    "اسکول",
+    "سکول",
+    "موٹر سائیکل",
+    "گڑھا",
+]
+
+URDU_FRUSTRATION_KEYWORDS = [
+    "ہفتے",
+    "مہینہ",
+    "سال",
+    "کوئی نہیں آتا",
+    "شکایت",
+    "بار بار",
+    "پہلے بھی",
+    "کوئی پرواہ نہیں",
+]
+
 EMERGENCY_WEIGHT = 30
 DANGER_WEIGHT = 15
 FRUSTRATION_WEIGHT = 10
 
 # (keywords, weight, category name), highest severity first.
 KEYWORD_CATEGORIES = [
-    (EMERGENCY_KEYWORDS, EMERGENCY_WEIGHT, "emergency"),
-    (DANGER_KEYWORDS, DANGER_WEIGHT, "danger"),
-    (FRUSTRATION_KEYWORDS, FRUSTRATION_WEIGHT, "frustration"),
+    (EMERGENCY_KEYWORDS + URDU_EMERGENCY_KEYWORDS, EMERGENCY_WEIGHT, "emergency"),
+    (DANGER_KEYWORDS + URDU_DANGER_KEYWORDS, DANGER_WEIGHT, "danger"),
+    (FRUSTRATION_KEYWORDS + URDU_FRUSTRATION_KEYWORDS, FRUSTRATION_WEIGHT, "frustration"),
 ]
 
 

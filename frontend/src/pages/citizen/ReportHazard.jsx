@@ -5,6 +5,7 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Button, Alert, Card } from '../../components/UI'
 import Toast from '../../components/Toast'
+import VoiceInput from '../../components/VoiceInput'
 import {
   Camera, MapPin, FileText, CheckCircle2, ArrowLeft, ArrowRight,
   Lightbulb, Locate, Send, ImagePlus,
@@ -92,6 +93,15 @@ export default function ReportHazard() {
       setImageUrlUploading(false)
       setUploadProgress(0)
     }
+  }
+
+  // Dictated speech appends rather than replaces, so a citizen can speak in
+  // several goes and still edit the result by hand afterwards.
+  const handleTranscript = (text) => {
+    setFormData(prev => {
+      const existing = prev.description.trim()
+      return { ...prev, description: existing ? `${existing} ${text}` : text }
+    })
   }
 
   const handleChange = (e) => {
@@ -371,11 +381,17 @@ export default function ReportHazard() {
                   </div>
                 )}
 
+                <VoiceInput onTranscript={handleTranscript} />
+
+                <label htmlFor="hazard-description" className="sr-only">
+                  Describe the hazard
+                </label>
                 <textarea
+                  id="hazard-description"
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  placeholder="Describe the hazard..."
+                  placeholder="Describe the hazard, or use Speak instead above..."
                   className="w-full px-4 py-3 border border-neutral-200 rounded-lg resize-none mb-4 focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition"
                   rows="5"
                   required

@@ -18,6 +18,7 @@
 - [Complete Setup Guide](#-complete-setup-guide)
 - [Running the App](#-running-the-app)
 - [Testing](#-testing)
+- [Voice Reporting](#-voice-reporting)
 - [Design System](#-design-system)
 - [Project Structure](#-project-structure)
 - [API Endpoints](#-api-endpoints)
@@ -38,6 +39,7 @@
 - 🚩 Spam / duplicate detection (rate limits, perceptual image hashing)
 - 📍 Duplicate-report clustering within a 50 m radius
 - 🌐 Bilingual UI (English / اردو)
+- 🎤 Voice reporting — dictate a hazard description in Urdu or English
 
 ---
 
@@ -232,6 +234,42 @@ npm run build       # production build
 
 ---
 
+## 🎤 Voice Reporting
+
+Citizens can dictate a hazard description instead of typing it, on step 3 of
+the report flow. Literacy is a real barrier for many of the people this
+platform serves, and typing Roman Urdu on a phone is slow even for those who
+can — so speech keeps the core action reachable.
+
+**How it works**
+
+- Uses the browser's built-in Web Speech API. There is no API key, no cost, and
+  no model to download.
+- Urdu (`ur-PK`) is the default; English (`en-PK`) is one tap away.
+- Speech appends to the field rather than replacing it, so a report can be
+  spoken in several goes and then edited by hand.
+- Interim results preview below the button but only final results are committed.
+
+**Requirements and limits**
+
+- Needs Chrome or Edge. In any other browser the control is replaced by a note
+  and typing works exactly as before — nothing is gated behind speech.
+- Needs a secure context: HTTPS in production, or `localhost` in development.
+- Punjabi is deliberately not offered. Browser engines only support Punjabi in
+  Gurmukhi (`pa-IN`), which would return the wrong script for Pakistan, where
+  Punjabi is written in Shahmukhi.
+
+**Why the sentiment analyser has Urdu-script keywords**
+
+Dictation returns Urdu script, not Roman transliteration. The keyword lists in
+`detection/sentiment.py` were Roman-only, so a spoken emergency scored
+`neutral` and was triaged well below the same report typed in Roman Urdu —
+under-prioritising exactly the citizens the feature exists for. The analyser
+now carries Urdu-script terms alongside the Roman and English ones, and the
+same report scores identically in either script.
+
+---
+
 ## 🎨 Design System
 
 All colours come from a single source of truth:
@@ -285,9 +323,10 @@ Road-Safety-Pakistan/
 │   └── requirements.txt
 └── frontend/
     ├── src/
-    │   ├── components/      # Header, Footer, UI primitives, Toast
+    │   ├── components/      # Header, Footer, UI primitives, Toast,
+    │   │                    #   VoiceInput
     │   ├── context/         # AuthContext, LanguageContext
-    │   ├── hooks/           # useDocumentTitle
+    │   ├── hooks/           # useDocumentTitle, useSpeechRecognition
     │   ├── pages/
     │   │   ├── public/      # Home, LiveMap, TrackComplaint
     │   │   ├── auth/        # Login, Register, ForgotPassword
@@ -384,6 +423,10 @@ Vite may be bound to IPv6 only on Windows. Use `http://localhost:5173`.
 **`UNIQUE constraint failed: accounts_user.phone`**
 A user with that phone number already exists. Every one of `email`, `phone`
 and `cnic` is unique on the user model.
+
+**The "Speak instead" button does not appear**
+Voice input needs Chrome or Edge and a secure context. On `localhost` it works
+over plain HTTP; deployed, it requires HTTPS. Typing is always available.
 
 **Never commit `backend/.venv/`**
 It is roughly 1.2 GB across ~27,000 files. It is gitignored — keep it that way.
