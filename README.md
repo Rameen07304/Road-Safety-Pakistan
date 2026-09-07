@@ -12,7 +12,7 @@
 
 ## 📋 Table of Contents
 - [Features](#-features)
-- [Tech Stack](#️-tech-stack)
+- [Tech Stack](#-tech-stack)
 - [Model Performance](#-model-performance)
 - [Prerequisites](#-prerequisites)
 - [Complete Setup Guide](#-complete-setup-guide)
@@ -29,7 +29,7 @@
 
 ## ✨ Features
 - 📸 Photo upload with YOLOv8 AI hazard detection
-- 🧠 Roman Urdu + English sentiment analysis
+- 🧠 Sentiment analysis in Urdu script, Roman Urdu and English
 - 🗺️ Live complaint map (OpenStreetMap + Leaflet)
 - 📊 Ward performance accountability dashboard
 - 🔍 Real-time complaint tracking by ID or phone
@@ -43,7 +43,7 @@
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠 Tech Stack
 
 | Layer      | Technology                        |
 |------------|-----------------------------------|
@@ -173,7 +173,7 @@ npm install
 
 ---
 
-## ▶️ Running the App
+## ▶ Running the App
 
 Run these in **two separate terminals**.
 
@@ -316,7 +316,7 @@ Road-Safety-Pakistan/
 │   ├── complaints/          # Complaint model, clustering, spam flags, API
 │   ├── detection/           # YOLOv8 inference, sentiment, urgency scoring
 │   │   ├── detector.py      # Hugging Face Space + local model fallback
-│   │   ├── sentiment.py     # Roman Urdu / English keyword analysis
+│   │   ├── sentiment.py     # Urdu script / Roman Urdu / English analysis
 │   │   └── urgency.py       # Hazard score × sentiment multiplier
 │   ├── core/settings/       # base.py / dev.py / prod.py
 │   ├── ml_models/best.pt    # (downloaded separately — gitignored)
@@ -324,7 +324,7 @@ Road-Safety-Pakistan/
 └── frontend/
     ├── src/
     │   ├── components/      # Header, Footer, UI primitives, Toast,
-    │   │                    #   VoiceInput
+    │   │                    #   UpvoteButton, VoiceInput
     │   ├── context/         # AuthContext, LanguageContext
     │   ├── hooks/           # useDocumentTitle, useSpeechRecognition
     │   ├── pages/
@@ -336,7 +336,7 @@ Road-Safety-Pakistan/
     │   ├── services/api.js  # Axios instance + token refresh
     │   ├── theme/colors.js  # Single source of truth for the palette
     │   ├── translations/    # English / Urdu dictionary
-    │   └── utils/
+    │   └── utils/           # urgencyHelpers (map pin colours, labels)
     └── tailwind.config.js
 ```
 
