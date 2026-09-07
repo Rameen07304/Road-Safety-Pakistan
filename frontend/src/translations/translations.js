@@ -16,6 +16,8 @@ export const translations = {
   nav_report_hazard: { en: 'Report Hazard', ur: 'خطرے کی اطلاع دیں' },
   nav_my_complaints: { en: 'My Complaints', ur: 'میری شکایات' },
   app_name: { en: 'Road Safety Pakistan', ur: 'روڈ سیفٹی پاکستان' },
+  nav_open_menu: { en: 'Open navigation menu', ur: 'نیویگیشن مینو کھولیں' },
+  nav_close_menu: { en: 'Close navigation menu', ur: 'نیویگیشن مینو بند کریں' },
 
   // Home page
   home_hero_title: { en: 'Make Our Roads Safer, Together.', ur: 'آئیے مل کر اپنی سڑکیں محفوظ بنائیں۔' },

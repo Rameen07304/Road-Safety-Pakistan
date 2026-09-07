@@ -6,8 +6,10 @@ import Footer from '../../components/Footer'
 import { Card, Badge, Button } from '../../components/UI'
 import UpvoteButton from '../../components/UpvoteButton'
 import { Loader2, Inbox, Building2 } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 export default function MyComplaints() {
+  useDocumentTitle('My Complaints')
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
@@ -80,7 +82,20 @@ export default function MyComplaints() {
         ) : (
           <div className="space-y-4">
             {filteredComplaints.map(complaint => (
-              <Card key={complaint.complaint_id} className="cursor-pointer hover:shadow-base transition" onClick={() => navigate(`/complaint/${complaint.complaint_id}`)}>
+              <Card
+                key={complaint.complaint_id}
+                role="link"
+                tabIndex={0}
+                aria-label={`Open complaint ${complaint.complaint_id}`}
+                className="cursor-pointer transition hover:shadow-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                onClick={() => navigate(`/complaint/${complaint.complaint_id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    navigate(`/complaint/${complaint.complaint_id}`)
+                  }
+                }}
+              >
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">

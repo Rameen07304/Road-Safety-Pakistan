@@ -4,6 +4,7 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge } from '../../components/UI'
 import { Loader2 } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 const WARDS = [
   'Lahore Cant', 'Data Ganj Baksh', 'Allama Iqbal', 'Azad Pul', 'Mall',
@@ -11,6 +12,7 @@ const WARDS = [
 ]
 
 export default function WardAnalytics() {
+  useDocumentTitle('Ward Analytics')
   const [loading, setLoading] = useState(true)
   const [wardStats, setWardStats] = useState([])
 

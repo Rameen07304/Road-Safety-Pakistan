@@ -6,10 +6,12 @@ import Footer from '../../components/Footer'
 import { Card, Badge, Button, Alert } from '../../components/UI'
 import Toast from '../../components/Toast'
 import { Loader2, ArrowLeft, Image as ImageIcon, Camera, CheckCircle2 } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
 export default function ComplaintDetail() {
+  useDocumentTitle('Complaint Detail')
   const { id } = useParams()
   const navigate = useNavigate()
   const [complaint, setComplaint] = useState(null)

@@ -7,6 +7,7 @@ import { Button, Card, Badge, Alert } from '../../components/UI'
 import UpvoteButton from '../../components/UpvoteButton'
 import { useLanguage } from '../../context/LanguageContext'
 import { Search, Users, TrendingUp, TrendingDown, Minus, Clock, Image as ImageIcon } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 const ProgressionIcon = ({ progression }) => {
   if (progression === 'Worsening') return <TrendingUp size={12} />
@@ -15,6 +16,7 @@ const ProgressionIcon = ({ progression }) => {
 }
 
 export default function TrackComplaint() {
+  useDocumentTitle('Track a Complaint')
   const { t } = useLanguage()
   const [searchParams] = useSearchParams()
   const [searchId, setSearchId] = useState(searchParams.get('id') || '')

@@ -1,28 +1,42 @@
 import { BrowserRouter, Routes, Route, 
          Navigate } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
 
+// Pages are code-split per route: the whole app used to ship as one
+// ~590 kB bundle, so a citizen on a phone downloaded every admin screen
+// before the home page could paint.
+
 // Public pages
-import Home           from './pages/public/Home'
-import LiveMap        from './pages/public/LiveMap'
-import TrackComplaint from './pages/public/TrackComplaint'
-// Model demo removed per user request
+const Home           = lazy(() => import('./pages/public/Home'))
+const LiveMap        = lazy(() => import('./pages/public/LiveMap'))
+const TrackComplaint = lazy(() => import('./pages/public/TrackComplaint'))
 
 // Auth pages
-import Login          from './pages/auth/Login'
-import Register       from './pages/auth/Register'
-import ForgotPassword from './pages/auth/ForgotPassword'
+const Login          = lazy(() => import('./pages/auth/Login'))
+const Register       = lazy(() => import('./pages/auth/Register'))
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'))
 
 // Citizen pages
-import ReportHazard  from './pages/citizen/ReportHazard'
-import MyComplaints  from './pages/citizen/MyComplaints'
-import CitizenDashboard from './pages/citizen/Dashboard'
+const ReportHazard      = lazy(() => import('./pages/citizen/ReportHazard'))
+const MyComplaints      = lazy(() => import('./pages/citizen/MyComplaints'))
+const CitizenDashboard  = lazy(() => import('./pages/citizen/Dashboard'))
 
 // Admin pages
-import Dashboard      from './pages/admin/Dashboard'
-import ComplaintDetail from './pages/admin/ComplaintDetail'
-import WardAnalytics  from './pages/admin/WardAnalytics'
-import FlaggedQueue   from './pages/admin/FlaggedQueue'
+const Dashboard       = lazy(() => import('./pages/admin/Dashboard'))
+const ComplaintDetail = lazy(() => import('./pages/admin/ComplaintDetail'))
+const WardAnalytics   = lazy(() => import('./pages/admin/WardAnalytics'))
+const FlaggedQueue    = lazy(() => import('./pages/admin/FlaggedQueue'))
+
+// Shown while a route chunk is still downloading.
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" role="status" aria-live="polite">
+      <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary-600"></div>
+      <span className="sr-only">Loading page</span>
+    </div>
+  )
+}
 
 // Route guard: citizen only
 function CitizenRoute({ children }) {
@@ -73,6 +87,7 @@ function GuestRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
 
         {/* Public routes */}
@@ -147,6 +162,7 @@ export default function App() {
                element={<Navigate to="/" replace />} />
 
       </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

@@ -8,8 +8,10 @@ import Footer from '../../components/Footer'
 import { Button, Alert } from '../../components/UI'
 import Toast from '../../components/Toast'
 import { Shield, CheckCircle2 } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 export default function Register() {
+  useDocumentTitle('Create an Account')
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -200,39 +202,39 @@ export default function Register() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label>Full Name</label>
+                    <label htmlFor="reg-full-name">Full Name</label>
                     <span>نام</span>
                   </div>
-                  <input type="text" name="full_name" value={formData.full_name} onChange={handleChange} placeholder="e.g. Ahmed Khan" className={inputBase} required />
+                  <input id="reg-full-name" type="text" name="full_name" value={formData.full_name} onChange={handleChange} placeholder="e.g. Ahmed Khan" className={inputBase} required />
                 </div>
 
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label>Email Address</label>
+                    <label htmlFor="reg-email">Email Address</label>
                     <span>ای میل</span>
                   </div>
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="ahmed@example.pk" className={inputBase} required />
+                  <input id="reg-email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="ahmed@example.pk" className={inputBase} required />
                   {formErrors.email && <p className={fieldErrorClass}>{formErrors.email}</p>}
                 </div>
 
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label>Phone Number</label>
+                    <label htmlFor="reg-phone">Phone Number</label>
                     <span>فون نمبر</span>
                   </div>
                   <div className={inputWithPrefix}>
                     <span className={prefixBase}>+92</span>
-                    <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="300 1234567" className="w-full border-0 px-4 py-2 text-sm outline-none" required />
+                    <input id="reg-phone" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="300 1234567" className="w-full border-0 px-4 py-2 text-sm outline-none" required />
                   </div>
                   {formErrors.phone && <p className={fieldErrorClass}>{formErrors.phone}</p>}
                 </div>
 
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label>ID Type</label>
+                    <label htmlFor="reg-id-type">ID Type</label>
                     <span>شناختی دستاویز</span>
                   </div>
-                  <select name="id_type" value={formData.id_type} onChange={handleChange} className={inputBase}>
+                  <select id="reg-id-type" name="id_type" value={formData.id_type} onChange={handleChange} className={inputBase}>
                     <option value="cnic">CNIC (Computerized National ID Card)</option>
                     <option value="passport">Passport</option>
                   </select>
@@ -241,18 +243,18 @@ export default function Register() {
 
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label>CNIC Number</label>
+                    <label htmlFor="reg-id-number">CNIC Number</label>
                     <span>شناختی نمبر</span>
                   </div>
                   {formData.id_type === 'passport' ? (
-                    <input type="text" name="passport_number" value={formData.passport_number} onChange={handleChange} placeholder="AB1234567" className={inputBase} required />
+                    <input id="reg-id-number" type="text" name="passport_number" value={formData.passport_number} onChange={handleChange} placeholder="AB1234567" className={inputBase} required />
                   ) : (
                     <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] gap-2">
-                      <input ref={cnic1Ref} type="text" inputMode="numeric" name="cnic_part1" value={formData.cnic_part1} onChange={(e) => handleCnicChange(e, 1)} onPaste={handleCnicPaste} placeholder="35202" maxLength={5} className={inputBase} required />
+                      <input id="reg-id-number" ref={cnic1Ref} type="text" inputMode="numeric" name="cnic_part1" aria-label="CNIC first five digits" value={formData.cnic_part1} onChange={(e) => handleCnicChange(e, 1)} onPaste={handleCnicPaste} placeholder="35202" maxLength={5} className={inputBase} required />
                       <span className="self-center text-neutral-300">-</span>
-                      <input ref={cnic2Ref} type="text" inputMode="numeric" name="cnic_part2" value={formData.cnic_part2} onChange={(e) => handleCnicChange(e, 2)} placeholder="1234567" maxLength={7} className={inputBase} required />
+                      <input ref={cnic2Ref} type="text" inputMode="numeric" name="cnic_part2" aria-label="CNIC middle seven digits" value={formData.cnic_part2} onChange={(e) => handleCnicChange(e, 2)} placeholder="1234567" maxLength={7} className={inputBase} required />
                       <span className="self-center text-neutral-300">-</span>
-                      <input ref={cnic3Ref} type="text" inputMode="numeric" name="cnic_part3" value={formData.cnic_part3} onChange={(e) => handleCnicChange(e, 3)} placeholder="1" maxLength={1} className={inputBase} required />
+                      <input ref={cnic3Ref} type="text" inputMode="numeric" name="cnic_part3" aria-label="CNIC last digit" value={formData.cnic_part3} onChange={(e) => handleCnicChange(e, 3)} placeholder="1" maxLength={1} className={inputBase} required />
                     </div>
                   )}
                   {formErrors.cnic && <p className={fieldErrorClass}>{formErrors.cnic}</p>}
@@ -261,17 +263,17 @@ export default function Register() {
 
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label>Password</label>
+                    <label htmlFor="reg-password">Password</label>
                     <span>پاس ورڈ</span>
                   </div>
-                  <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" className={inputBase} required />
+                  <input id="reg-password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" className={inputBase} required />
                   {formErrors.password && <p className={fieldErrorClass}>{formErrors.password}</p>}
                   <div className="mt-3">
                     <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                      <label>Confirm Password</label>
+                      <label htmlFor="reg-password-confirm">Confirm Password</label>
                       <span>پاس ورڈ دوبارہ</span>
                     </div>
-                    <input type="password" name="password_confirm" value={formData.password_confirm} onChange={handleChange} placeholder="••••••••" className={inputBase} required />
+                    <input id="reg-password-confirm" type="password" name="password_confirm" value={formData.password_confirm} onChange={handleChange} placeholder="••••••••" className={inputBase} required />
                     {formErrors.password_confirm && <p className={fieldErrorClass}>{formErrors.password_confirm}</p>}
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">

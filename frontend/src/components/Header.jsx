@@ -114,8 +114,12 @@ export default function Header() {
 
         {/* Mobile Menu Button */}
         <button
+          type="button"
           className="md:hidden text-neutral-500"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label={mobileMenuOpen ? t('nav_close_menu') : t('nav_open_menu')}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-nav"
         >
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -123,7 +127,7 @@ export default function Header() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-neutral-100 bg-white p-4 space-y-1">
+        <div id="mobile-nav" className="md:hidden border-t border-neutral-100 bg-white p-4 space-y-1">
           <Link to="/" className="block py-2.5 px-3 rounded-lg text-neutral-600 hover:bg-primary-50 hover:text-primary-600 transition text-sm">{t('nav_home')}</Link>
           <Link to="/map" className="block py-2.5 px-3 rounded-lg text-neutral-600 hover:bg-primary-50 hover:text-primary-600 transition text-sm">{t('nav_map')}</Link>
           <Link to="/track" className="block py-2.5 px-3 rounded-lg text-neutral-600 hover:bg-primary-50 hover:text-primary-600 transition text-sm">{t('nav_track')}</Link>

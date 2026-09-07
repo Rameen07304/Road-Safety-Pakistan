@@ -14,6 +14,7 @@ import { Search, X, Users, TrendingUp, TrendingDown, Minus, BarChart3, Loader2 }
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 const URGENCY_RANK = { low: 1, medium: 2, high: 3, critical: 4 }
 
@@ -240,6 +241,7 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
 }
 
 export default function LiveMap() {
+  useDocumentTitle('Live Hazard Map')
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ critical: 0, high: 0, medium: 0, low: 0 })

@@ -5,10 +5,12 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Card, Badge, Button, Alert } from '../../components/UI'
 import { Loader2, FileText, FileDown, Clock, CheckCircle2, AlertTriangle, Flag, Building2 } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
 export default function Dashboard() {
+  useDocumentTitle('Admin Dashboard')
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('pending')
@@ -96,8 +98,9 @@ export default function Dashboard() {
           <Card className="w-full lg:w-auto">
             <div className="flex flex-wrap items-end gap-3">
               <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-1">Start Date</label>
+                <label htmlFor="report-start-date" className="block text-xs font-semibold text-neutral-500 mb-1">Start Date</label>
                 <input
+                  id="report-start-date"
                   type="date"
                   value={reportStartDate}
                   onChange={(e) => setReportStartDate(e.target.value)}
@@ -105,8 +108,9 @@ export default function Dashboard() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-neutral-500 mb-1">End Date</label>
+                <label htmlFor="report-end-date" className="block text-xs font-semibold text-neutral-500 mb-1">End Date</label>
                 <input
+                  id="report-end-date"
                   type="date"
                   value={reportEndDate}
                   onChange={(e) => setReportEndDate(e.target.value)}
@@ -154,8 +158,17 @@ export default function Dashboard() {
           </Card>
           <Card
             variant="flat"
-            className="text-center cursor-pointer hover:ring-2 hover:ring-accent transition"
+            role="link"
+            tabIndex={0}
+            aria-label={`Flagged for review: ${flaggedCount}. Open the flagged queue.`}
+            className="text-center cursor-pointer transition hover:ring-2 hover:ring-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             onClick={() => navigate('/admin/flagged')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                navigate('/admin/flagged')
+              }
+            }}
           >
             <div className="w-10 h-10 bg-accent-light rounded-lg flex items-center justify-center mx-auto mb-3">
               <Flag size={18} className="text-accent-dark" />

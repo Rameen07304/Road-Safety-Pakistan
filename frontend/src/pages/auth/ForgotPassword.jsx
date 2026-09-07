@@ -6,8 +6,10 @@ import Footer from '../../components/Footer'
 import { Button, Alert } from '../../components/UI'
 import Toast from '../../components/Toast'
 import { ArrowLeft, ArrowRight, Mail, RotateCcw, CheckCircle2 } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 export default function ForgotPassword() {
+  useDocumentTitle('Reset Password')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -78,7 +80,7 @@ export default function ForgotPassword() {
                 <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                   <div>
                     <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                      <label>Email Address</label>
+                      <label htmlFor="forgot-email">Email Address</label>
                       <span>ای میل کا پتہ</span>
                     </div>
                     <div className="flex overflow-hidden rounded-lg border border-neutral-200 bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-300/30">
@@ -86,6 +88,7 @@ export default function ForgotPassword() {
                         <Mail size={14} />
                       </span>
                       <input
+                        id="forgot-email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}

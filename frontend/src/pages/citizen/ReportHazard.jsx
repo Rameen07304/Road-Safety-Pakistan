@@ -9,6 +9,7 @@ import {
   Camera, MapPin, FileText, CheckCircle2, ArrowLeft, ArrowRight,
   Lightbulb, Locate, Send, ImagePlus,
 } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 const WARDS = [
   'Lahore Cant', 'Data Ganj Baksh', 'Allama Iqbal', 'Azad Pul', 'Mall',
@@ -23,6 +24,7 @@ const STEPS = [
 ]
 
 export default function ReportHazard() {
+  useDocumentTitle('Report a Hazard')
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     image_url: '',
@@ -42,11 +44,19 @@ export default function ReportHazard() {
   const [toast, setToast] = useState(null)
   const [detectedClasses, setDetectedClasses] = useState([])
   const [imageUrlUploading, setImageUrlUploading] = useState(false)
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
 
-  const handleImageChange = async (e) => {
-    const file = e.target.files?.[0]
+  const handleImageChange = (e) => acceptImageFile(e.target.files?.[0])
+
+  const handleImageDrop = (e) => {
+    e.preventDefault()
+    setIsDraggingOver(false)
+    acceptImageFile(e.dataTransfer?.files?.[0])
+  }
+
+  const acceptImageFile = async (file) => {
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
@@ -236,8 +246,24 @@ export default function ReportHazard() {
                   Upload Photo
                 </h2>
                 <div
-                  className="border-2 border-dashed border-neutral-200 rounded-xl p-10 text-center hover:border-primary-300 hover:bg-primary-50/30 transition cursor-pointer group"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload a photo of the hazard. JPG or PNG, up to 10 megabytes."
+                  className={`rounded-xl border-2 border-dashed p-10 text-center transition cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                    isDraggingOver
+                      ? 'border-primary-400 bg-primary-50'
+                      : 'border-neutral-200 hover:border-primary-300 hover:bg-primary-50/30'
+                  }`}
                   onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      fileInputRef.current?.click()
+                    }
+                  }}
+                  onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
+                  onDragLeave={() => setIsDraggingOver(false)}
+                  onDrop={handleImageDrop}
                 >
                   {imagePreview ? (
                     <div>
@@ -265,7 +291,14 @@ export default function ReportHazard() {
                     <p className="text-xs text-neutral-400 mt-1">Uploading: {uploadProgress}%</p>
                   </div>
                 )}
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                <input
+                  ref={fileInputRef}
+                  id="hazard-photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="sr-only"
+                />
               </Card>
             )}
 

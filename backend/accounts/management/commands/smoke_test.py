@@ -7,6 +7,7 @@ from PIL import Image
 import numpy as np
 
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 
 from accounts.models import User
 from complaints.models import (
@@ -41,38 +42,59 @@ def check(label, condition, detail=""):
 def make_citizen(idx):
     """Create or return a citizen user with a unique phone/email/cnic."""
     email = f"smoke_citizen_{idx}@test.pk"
-    user, created = User.objects.get_or_create(
-        email=email,
-        defaults={
-            "full_name": f"Smoke Citizen {idx}",
-            "phone": f"0300000010{idx}",
-            "role": "citizen",
-            "id_type": "cnic",
-            "cnic": f"35201-{1000000 + idx:07d}-{idx % 10}",
-        },
-    )
-    if created:
+    phone = f"0300000010{idx}"
+    cnic = f"35201-{1000000 + idx:07d}-{idx % 10}"
+
+    # email, phone and cnic are all unique -- match on any of them so a partial
+    # leftover record from an earlier run is reused instead of colliding.
+    user = User.objects.filter(
+        Q(email=email) | Q(phone=phone) | Q(cnic=cnic)
+    ).first()
+    if user is None:
+        user = User(
+            email=email,
+            full_name=f"Smoke Citizen {idx}",
+            phone=phone,
+            role="citizen",
+            id_type="cnic",
+            cnic=cnic,
+        )
         user.set_password("testpass123")
         user.save()
     return user
 
 
+SMOKE_ADMIN_EMAIL = "smoke_admin@test.pk"
+SMOKE_ADMIN_PHONE = "03009000001"
+
+
 def make_admin():
-    user, created = User.objects.get_or_create(
-        email="smoke_admin@test.pk",
-        defaults={
-            "full_name": "Smoke Admin",
-            "phone": "03009999999",
-            "role": "admin",
-            "is_staff": True,
-            "is_superuser": True,
-            "id_type": "passport",
-            "passport_number": "AB1234567",
-        },
-    )
-    if created:
+    """
+    Create or return the dedicated smoke-test admin.
+
+    Looks up by email *or* phone so the command stays idempotent even when a
+    real admin (e.g. from `createadmin`) already occupies a similar record --
+    both fields are unique, so keying on email alone can pass the lookup and
+    still fail the insert.
+    """
+    user = User.objects.filter(
+        Q(email=SMOKE_ADMIN_EMAIL) | Q(phone=SMOKE_ADMIN_PHONE)
+    ).first()
+    if user is None:
+        user = User(
+            email=SMOKE_ADMIN_EMAIL,
+            full_name="Smoke Admin",
+            phone=SMOKE_ADMIN_PHONE,
+            id_type="passport",
+            passport_number="AB1234567",
+        )
         user.set_password("adminpass123")
-        user.save()
+
+    # Ensure the account always has the privileges the test needs.
+    user.role = "admin"
+    user.is_staff = True
+    user.is_superuser = True
+    user.save()
     return user
 
 

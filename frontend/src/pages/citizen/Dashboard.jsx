@@ -11,6 +11,7 @@ import { Card, Badge, Button } from '../../components/UI'
 import { urgencyColors, statusLabels, statusClasses, formatDate } from '../../utils/urgencyHelpers'
 import { Loader2, Inbox, Map as MapIcon } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 const markerIcon = (urgencyLevel) => {
   const color = urgencyColors[urgencyLevel?.toLowerCase()] || urgencyColors.low
@@ -33,6 +34,7 @@ function StatCard({ label, value, accent }) {
 }
 
 export default function Dashboard() {
+  useDocumentTitle('My Dashboard')
   const { user } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
@@ -95,7 +97,16 @@ export default function Dashboard() {
                 <h2 className="text-lg font-heading font-bold text-neutral-800 mb-4">{t('dash_most_recent')}</h2>
                 {recent ? (
                   <div
-                    className="cursor-pointer rounded-lg border border-neutral-200 p-4 hover:shadow-base hover:border-primary-200 transition"
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`Open complaint ${recent.complaint_id}`}
+                    className="cursor-pointer rounded-lg border border-neutral-200 p-4 transition hover:shadow-base hover:border-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        navigate(`/complaint/${recent.complaint_id}`)
+                      }
+                    }}
                     onClick={() => navigate(`/complaint/${recent.complaint_id}`)}
                   >
                     <div className="flex items-center gap-3 mb-2">

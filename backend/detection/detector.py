@@ -124,7 +124,10 @@ def analyze_image(image_input):
                 if isinstance(result_image, str) and result_image.startswith("data:image"):
                     annotated_b64 = re.sub(r"^data:image/[^;]+;base64,", "", result_image)
 
-            unique_classes = list({item["class"] for item in detections})
+            # dict.fromkeys keeps the confidence order established above;
+            # a set comprehension here made detected_classes[0] -- which drives
+            # department routing and the primary hazard -- vary per process.
+            unique_classes = list(dict.fromkeys(item["class"] for item in detections))
             if detections or annotated_b64:
                 return {
                     "has_detections": bool(detections),
@@ -192,7 +195,8 @@ def analyze_image(image_input):
             )
             scores[class_name] = max(scores.get(class_name, 0.0), round(confidence, 2))
 
-        unique_classes = list({item["class"] for item in detections})
+        # Order-preserving dedupe: keep the highest-confidence class first.
+        unique_classes = list(dict.fromkeys(item["class"] for item in detections))
         annotated_image = result.plot() if hasattr(result, "plot") else None
         annotated_base64 = None
         if annotated_image is not None:

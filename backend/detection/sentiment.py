@@ -40,7 +40,6 @@ DANGER_KEYWORDS = [
     "cannot see",
     "slipped",
     "children",
-    "school",
     "risky",
     "hazardous",
     "bad condition",
@@ -58,7 +57,6 @@ FRUSTRATION_KEYWORDS = [
     "kabe se",
     "kabse",
     "baar baar",
-    "mushkil",
     "tang aa gaye",
     "bewakoof",
     "weeks",
@@ -74,11 +72,44 @@ FRUSTRATION_KEYWORDS = [
     "pathetic",
 ]
 
+EMERGENCY_WEIGHT = 30
+DANGER_WEIGHT = 15
+FRUSTRATION_WEIGHT = 10
+
+# (keywords, weight, category name), highest severity first.
 KEYWORD_CATEGORIES = [
-    (EMERGENCY_KEYWORDS, 30),
-    (DANGER_KEYWORDS, 15),
-    (FRUSTRATION_KEYWORDS, 10),
+    (EMERGENCY_KEYWORDS, EMERGENCY_WEIGHT, "emergency"),
+    (DANGER_KEYWORDS, DANGER_WEIGHT, "danger"),
+    (FRUSTRATION_KEYWORDS, FRUSTRATION_WEIGHT, "frustration"),
 ]
+
+
+def _build_matchers():
+    """
+    Pre-compile one word-boundary regex per keyword.
+
+    Plain substring matching produced false escalations: "smarared" contains
+    "mara" and pushed a harmless report to `emergency` (a 2.0x urgency
+    multiplier).  \\b anchors each term to whole words while still allowing
+    the multi-word Roman-Urdu phrases ("gir gaya", "bus palat").
+
+    A keyword is also assigned to its highest-severity category only, so a
+    term appearing in two lists -- or twice in the same list -- is counted
+    once instead of silently doubling that category's score.
+    """
+    matchers = []
+    claimed = set()
+    for keywords, weight, category in KEYWORD_CATEGORIES:
+        for keyword in keywords:
+            if keyword in claimed:
+                continue
+            claimed.add(keyword)
+            pattern = re.compile(r"\b" + re.escape(keyword) + r"\b")
+            matchers.append((keyword, pattern, weight, category))
+    return matchers
+
+
+_MATCHERS = _build_matchers()
 
 
 def analyze_text(text):
@@ -88,24 +119,18 @@ def analyze_text(text):
 
     normalized = re.sub(r"\s+", " ", text.lower()).strip()
     keywords_found = []
-    emergency_score = 0
-    danger_score = 0
-    frustration_score = 0
+    totals = {"emergency": 0, "danger": 0, "frustration": 0}
 
-    for keyword in EMERGENCY_KEYWORDS:
-        if keyword in normalized:
+    for keyword, pattern, weight, category in _MATCHERS:
+        if pattern.search(normalized):
             keywords_found.append(keyword)
-            emergency_score += 30
-    for keyword in DANGER_KEYWORDS:
-        if keyword in normalized:
-            keywords_found.append(keyword)
-            danger_score += 15
-    for keyword in FRUSTRATION_KEYWORDS:
-        if keyword in normalized:
-            keywords_found.append(keyword)
-            frustration_score += 10
+            totals[category] += weight
 
-    if emergency_score >= 30:
+    emergency_score = totals["emergency"]
+    danger_score = totals["danger"]
+    frustration_score = totals["frustration"]
+
+    if emergency_score >= EMERGENCY_WEIGHT:
         sentiment = "emergency"
         score = min(emergency_score, 100)
         multiplier = 2.0
@@ -113,7 +138,7 @@ def analyze_text(text):
         sentiment = "frustrated"
         score = min(danger_score, 100)
         multiplier = 1.5
-    elif frustration_score >= 10:
+    elif frustration_score >= FRUSTRATION_WEIGHT:
         sentiment = "concerned"
         score = min(frustration_score, 100)
         multiplier = 1.2

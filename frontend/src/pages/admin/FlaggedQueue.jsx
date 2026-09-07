@@ -6,10 +6,12 @@ import Footer from '../../components/Footer'
 import { Card, Badge, Button, Alert } from '../../components/UI'
 import Toast from '../../components/Toast'
 import { Loader2, ArrowLeft, CheckCircle2, X, AlertTriangle, Eye, Flag } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
 export default function FlaggedQueue() {
+  useDocumentTitle('Flagged Reports')
   const [flagged, setFlagged] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

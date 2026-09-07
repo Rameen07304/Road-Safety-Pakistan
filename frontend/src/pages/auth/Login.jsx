@@ -8,8 +8,10 @@ import Footer from '../../components/Footer'
 import { Button, Alert } from '../../components/UI'
 import Toast from '../../components/Toast'
 import { Shield, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 export default function Login() {
+  useDocumentTitle('Login')
   const [loginMethod, setLoginMethod] = useState('email')
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -115,7 +117,7 @@ export default function Login() {
 
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label>{loginMethod === 'phone' ? 'Phone Number' : 'Email Address'}</label>
+                    <label htmlFor="login-identifier">{loginMethod === 'phone' ? 'Phone Number' : 'Email Address'}</label>
                     <span>{loginMethod === 'phone' ? 'فون نمبر' : 'ای میل کا پتہ'}</span>
                   </div>
                   <div className="flex overflow-hidden rounded-lg border border-neutral-200 bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-300/30">
@@ -123,6 +125,7 @@ export default function Login() {
                       {loginMethod === 'phone' ? '+92' : '@'}
                     </span>
                     <input
+                      id="login-identifier"
                       type={loginMethod === 'phone' ? 'tel' : 'email'}
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
@@ -135,7 +138,7 @@ export default function Login() {
 
                 <div>
                   <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label>Password</label>
+                    <label htmlFor="login-password">Password</label>
                     <span>پاس ورڈ</span>
                   </div>
                   <div className="flex overflow-hidden rounded-lg border border-neutral-200 bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-300/30">
@@ -143,6 +146,7 @@ export default function Login() {
                       <Lock size={14} />
                     </span>
                     <input
+                      id="login-password"
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}

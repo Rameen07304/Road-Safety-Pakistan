@@ -8,7 +8,7 @@ class Command(BaseCommand):
     help = "Seed flagged + normal complaints for browser testing"
 
     def handle(self, *args, **options):
-        citizen = User.objects.get(email="browser@test.com")
+        citizen = self._get_or_create_citizen()
 
         # 3 normal complaints (visible on map)
         normals = [
@@ -20,6 +20,8 @@ class Command(BaseCommand):
              "lat": 31.5601, "lng": 74.3129, "ward": "Johar Town", "dept": "Solid Waste Management"},
         ]
         for n in normals:
+            if Complaint.objects.filter(description=n["desc"]).exists():
+                continue
             Complaint.objects.create(
                 citizen=citizen,
                 image_url="https://res.cloudinary.com/demo/image/upload/sample.jpg",
@@ -45,6 +47,8 @@ class Command(BaseCommand):
              "reason": "Duplicate image: same photo was already submitted"},
         ]
         for f in flaggged_data:
+            if Complaint.objects.filter(description=f["desc"]).exists():
+                continue
             Complaint.objects.create(
                 citizen=citizen,
                 image_url="https://res.cloudinary.com/demo/image/upload/sample.jpg",
@@ -64,3 +68,25 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f"Seeded {total} complaints ({flagged} flagged, {total - flagged} normal)"
         ))
+
+    @staticmethod
+    def _get_or_create_citizen():
+        """Return the browser-test citizen, creating it when absent.
+
+        The command used to assume this user already existed, which made a
+        fresh checkout fail with User.DoesNotExist before seeding anything.
+        """
+        email = "browser@test.com"
+        citizen = User.objects.filter(email=email).first()
+        if citizen is None:
+            citizen = User(
+                email=email,
+                full_name="Browser Test Citizen",
+                phone="03009000002",
+                role="citizen",
+                id_type="cnic",
+                cnic="35201-9000002-1",
+            )
+            citizen.set_password("testpass123")
+            citizen.save()
+        return citizen

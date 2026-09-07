@@ -3,6 +3,7 @@ from PIL import Image, UnidentifiedImageError
 import cv2
 import hashlib
 import io
+import logging
 import numpy as np
 import requests
 
@@ -30,6 +31,9 @@ from accounts.permissions import IsAdminUser
 from detection.detector import analyze_image
 from detection.sentiment import analyze_text
 from detection.urgency import calculate_urgency
+
+
+logger = logging.getLogger(__name__)
 
 
 # Duplicate-detection constants
@@ -69,6 +73,30 @@ def _perceptual_image_hash(image_url):
             hash_int = (hash_int << 1) | int(bit)
         return f"{hash_int:016x}"
     except Exception:
+        return None
+
+
+def _upload_annotated_image(annotated_image_base64):
+    """
+    Upload the YOLO-annotated preview to Cloudinary and return its URL.
+
+    The annotated image is a presentational extra, so any failure here
+    (missing credentials, network error, quota) must never abort the
+    submission -- the citizen's hazard report is the thing that matters.
+    Returns None when the upload is skipped or fails.
+    """
+    if not annotated_image_base64:
+        return None
+    try:
+        upload = cloudinary.uploader.upload(
+            f"data:image/jpeg;base64,{annotated_image_base64}",
+            folder="complaints/annotated",
+            resource_type="image",
+        )
+        return upload.get("secure_url") or upload.get("url")
+    except Exception:
+        logger.warning("Annotated image upload failed; saving complaint without it.",
+                       exc_info=True)
         return None
 
 
@@ -210,17 +238,9 @@ class ComplaintSubmitView(APIView):
         image_url = serializer.validated_data["image_url"]
         description = serializer.validated_data["description"]
         analysis = analyze_image(image_url)
-        annotated_image_url = None
-        annotated_image_base64 = analysis.get("annotated_image_base64")
-        if annotated_image_base64:
-            annotated_upload = cloudinary.uploader.upload(
-                f"data:image/jpeg;base64,{annotated_image_base64}",
-                folder="complaints/annotated",
-                resource_type="image",
-            )
-            annotated_image_url = (
-                annotated_upload.get("secure_url") or annotated_upload.get("url")
-            )
+        annotated_image_url = _upload_annotated_image(
+            analysis.get("annotated_image_base64")
+        )
         sentiment = analyze_text(description)
         urgency = calculate_urgency(analysis.get("detected_classes", []), sentiment)
 
@@ -320,6 +340,7 @@ class UploadImageView(APIView):
         except UnidentifiedImageError:
             return Response({'detail': 'The uploaded file is not a valid image.'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
+            logger.exception("Image upload failed")
             return Response({'detail': 'Failed to upload image.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

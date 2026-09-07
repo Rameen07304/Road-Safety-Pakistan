@@ -12,6 +12,7 @@ import {
   ArrowRight, FileText, CheckCircle2, Clock, Timer,
   Upload, ScanSearch, Gauge,
 } from 'lucide-react'
+import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 const heroIllustration = encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" role="img" aria-label="Road safety illustration">
@@ -95,6 +96,7 @@ const steps = [
 ]
 
 export default function Home() {
+  useDocumentTitle('Home')
   const { user } = useAuth()
   const { t } = useLanguage()
   const [stats, setStats] = useState({
