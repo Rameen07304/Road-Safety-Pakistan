@@ -27,7 +27,6 @@ export const translations = {
   },
   home_view_live_map: { en: 'View Live Map', ur: 'لائیو نقشہ دیکھیں' },
   home_report_now: { en: 'Report Now', ur: 'ابھی اطلاع دیں' },
-  home_our_impact: { en: 'Our Impact', ur: 'ہمارا اثر' },
   home_total_complaints: { en: 'Total Complaints', ur: 'کل شکایات' },
   home_resolved: { en: 'Resolved', ur: 'حل شدہ' },
   home_pending: { en: 'Pending', ur: 'زیرِ التوا' },

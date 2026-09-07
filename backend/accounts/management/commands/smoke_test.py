@@ -11,17 +11,15 @@ from django.db.models import Q
 
 from accounts.models import User
 from complaints.models import (
-    Complaint, ComplaintCluster, ComplaintStatusHistory,
+    Complaint, ComplaintStatusHistory,
     predict_resolution_days, haversine_meters,
 )
 from complaints.views import (
     _find_or_create_cluster,
     _apply_cluster_urgency_bonus,
     _auto_assign_department,
-    _perceptual_image_hash,
     _check_spam_flags,
     _check_image_quality,
-    DEPARTMENT_MAP,
 )
 from complaints.serializers import _build_summary, ComplaintListSerializer, ComplaintDetailSerializer
 

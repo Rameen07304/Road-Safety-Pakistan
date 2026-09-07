@@ -1,7 +1,6 @@
 from PIL import Image, UnidentifiedImageError
 
 import cv2
-import hashlib
 import io
 import logging
 import numpy as np
@@ -16,11 +15,11 @@ import cloudinary.uploader
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Avg, Count, Q
+from django.db.models import Count, Q
 
 from django.db import IntegrityError, models
 
-from .models import Complaint, ComplaintCluster, ComplaintStatusHistory, ComplaintUpvote, haversine_meters, predict_resolution_days
+from .models import Complaint, ComplaintCluster, ComplaintStatusHistory, ComplaintUpvote, haversine_meters
 from .serializers import (
     ComplaintDetailSerializer,
     ComplaintListSerializer,

@@ -1,5 +1,4 @@
 from collections import Counter
-from datetime import datetime
 from io import BytesIO
 
 from django.utils import timezone

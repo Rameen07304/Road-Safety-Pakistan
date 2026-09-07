@@ -22,7 +22,7 @@ class Command(BaseCommand):
             )
             return
 
-        user = User.objects.create_superuser(
+        User.objects.create_superuser(
             email        = email,
             password     = password,
             full_name    = 'RSP Admin',

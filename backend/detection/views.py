@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from PIL import Image
 import io
-import base64
 
 from .detector import analyze_image
 from .sentiment import analyze_text
