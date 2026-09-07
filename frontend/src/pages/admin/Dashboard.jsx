@@ -92,38 +92,44 @@ export default function Dashboard() {
     <>
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8">
-          <h1 className="text-3xl font-heading font-bold text-neutral-900">Admin Dashboard</h1>
+        {/* Exporting a report is an occasional action, so it reads as a
+            toolbar subordinate to the page title rather than a card that
+            outweighs it. */}
+        <div className="mb-8 border-b border-neutral-200 pb-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="font-heading text-3xl font-bold tracking-[-0.01em] text-neutral-900">Admin Dashboard</h1>
+              <p className="mt-1 text-sm text-neutral-500">Triage incoming hazard reports across Lahore.</p>
+            </div>
 
-          <Card className="w-full lg:w-auto">
-            <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div>
-                <label htmlFor="report-start-date" className="block text-xs font-semibold text-neutral-500 mb-1">Start Date</label>
+                <label htmlFor="report-start-date" className="mb-1 block text-xs font-semibold text-neutral-500">Start Date</label>
                 <input
                   id="report-start-date"
                   type="date"
                   value={reportStartDate}
                   onChange={(e) => setReportStartDate(e.target.value)}
-                  className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm transition focus:border-primary-300 focus:ring-2 focus:ring-primary-300 sm:w-auto"
                 />
               </div>
               <div>
-                <label htmlFor="report-end-date" className="block text-xs font-semibold text-neutral-500 mb-1">End Date</label>
+                <label htmlFor="report-end-date" className="mb-1 block text-xs font-semibold text-neutral-500">End Date</label>
                 <input
                   id="report-end-date"
                   type="date"
                   value={reportEndDate}
                   onChange={(e) => setReportEndDate(e.target.value)}
-                  className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm transition focus:border-primary-300 focus:ring-2 focus:ring-primary-300 sm:w-auto"
                 />
               </div>
-              <Button loading={exportingReport} onClick={handleExportReport}>
-                <FileDown size={16} />
+              <Button variant="secondary" loading={exportingReport} onClick={handleExportReport}>
+                <FileDown size={16} aria-hidden="true" />
                 {exportingReport ? 'Generating report...' : 'Export PDF Report'}
               </Button>
             </div>
-            {exportError && <Alert message={exportError} type="error" className="mt-3" />}
-          </Card>
+          </div>
+          {exportError && <Alert message={exportError} type="error" className="mt-4" />}
         </div>
 
         {/* Stats Cards */}

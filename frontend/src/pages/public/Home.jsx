@@ -3,53 +3,26 @@ import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
-import { Card } from '../../components/UI'
 import { useState, useEffect } from 'react'
 import { api } from '../../services/api'
 import {
   Camera, Map, BarChart3, Brain, Zap, Shield,
   CircleDot, Unlock, AlertTriangle, Flag, Trash2,
-  ArrowRight, FileText, CheckCircle2, Clock, Timer,
-  Upload, ScanSearch, Gauge,
+  ArrowRight, Upload, ScanSearch, Gauge, MapPin, ChevronUp,
 } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
-import { primary, neutral, accent } from '../../theme/colors'
+import { urgency } from '../../theme/colors'
 
-const heroIllustration = encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" role="img" aria-label="Road safety illustration">
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="${primary[900]}"/>
-      <stop offset="55%" stop-color="${primary[700]}"/>
-      <stop offset="100%" stop-color="${primary[500]}"/>
-    </linearGradient>
-    <linearGradient id="road" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0%" stop-color="${neutral[800]}"/>
-      <stop offset="100%" stop-color="${neutral[900]}"/>
-    </linearGradient>
-  </defs>
-  <rect width="800" height="520" fill="url(#bg)"/>
-  <circle cx="650" cy="105" r="56" fill="${neutral[100]}" opacity="0.15"/>
-  <rect x="120" y="70" width="120" height="210" rx="14" fill="${primary[800]}" opacity="0.72"/>
-  <rect x="260" y="40" width="100" height="255" rx="14" fill="${primary[800]}" opacity="0.8"/>
-  <rect x="380" y="88" width="170" height="220" rx="14" fill="${primary[700]}" opacity="0.84"/>
-  <rect x="150" y="300" width="500" height="118" rx="20" fill="url(#road)"/>
-  <path d="M400 300v118" stroke="${accent.DEFAULT}" stroke-width="10" stroke-dasharray="38 24" stroke-linecap="round"/>
-  <path d="M200 414c80-34 320-34 400 0" fill="none" stroke="${primary[500]}" stroke-width="10" opacity="0.35"/>
-  <rect x="610" y="330" width="90" height="38" rx="10" fill="${primary[600]}"/>
-  <rect x="190" y="340" width="85" height="38" rx="10" fill="${primary[500]}"/>
-  <circle cx="645" cy="360" r="10" fill="${primary[300]}"/>
-  <circle cx="230" cy="360" r="10" fill="${primary[300]}"/>
-</svg>
-`)
+
+// The detection model is the product's actual differentiator, so it leads the
+// section at full width with its own evidence; the rest support it.
+const leadFeature = {
+  icon: Camera,
+  title: 'AI Hazard Detection',
+  desc: 'Our YOLOv8 model automatically detects potholes, open manholes, broken speed bumps, and garbage with 80.8% accuracy.',
+}
 
 const features = [
-  {
-    icon: Camera,
-    title: 'AI Hazard Detection',
-    desc: 'Our YOLOv8 model automatically detects potholes, open manholes, broken speed bumps, and garbage with 80.8% accuracy.',
-    color: 'bg-primary-100 text-primary-600',
-  },
   {
     icon: Map,
     title: 'Live Interactive Map',
@@ -96,6 +69,15 @@ const steps = [
   { icon: Gauge,      title: 'Get Priority',   desc: 'Your complaint gets an urgency score and appears on the live map for admin review.' },
 ]
 
+function timeAgo(iso) {
+  if (!iso) return ''
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.round(hrs / 24)}d ago`
+}
+
 export default function Home() {
   useDocumentTitle('Home')
   const { user } = useAuth()
@@ -106,6 +88,7 @@ export default function Home() {
     pendingComplaints: 0,
     avgResolutionTime: 0,
   })
+  const [recent, setRecent] = useState([])
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -121,6 +104,13 @@ export default function Home() {
           pendingComplaints: pending,
           avgResolutionTime: '2.4 days',
         })
+
+        // The hero shows real reports rather than a decorative placeholder.
+        setRecent(
+          [...complaints]
+            .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
+            .slice(0, 3)
+        )
       } catch (err) {
         console.error('Failed to fetch stats:', err)
       }
@@ -130,10 +120,10 @@ export default function Home() {
   }, [])
 
   const statCards = [
-    { value: stats.totalComplaints,    label: t('home_total_complaints'), icon: FileText,   color: 'text-primary-500',    bg: 'bg-primary-50' },
-    { value: stats.resolvedComplaints, label: t('home_resolved'),         icon: CheckCircle2, color: 'text-success', bg: 'bg-primary-50' },
-    { value: stats.pendingComplaints,  label: t('home_pending'),          icon: Clock,      color: 'text-urgency-medium', bg: 'bg-warning-50' },
-    { value: stats.avgResolutionTime,  label: t('home_avg_resolution'),   icon: Timer,      color: 'text-urgency-low',    bg: 'bg-info-50' },
+    { value: stats.totalComplaints,    label: t('home_total_complaints') },
+    { value: stats.resolvedComplaints, label: t('home_resolved') },
+    { value: stats.pendingComplaints,  label: t('home_pending') },
+    { value: stats.avgResolutionTime,  label: t('home_avg_resolution') },
   ]
 
   return (
@@ -141,87 +131,151 @@ export default function Home() {
       <Header />
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-800 via-primary-900 to-primary-900 text-white py-20 relative overflow-hidden">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary-800 via-primary-900 to-primary-900 py-20 text-white lg:py-24">
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 opacity-[0.04]" style={{
           backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)',
           backgroundSize: '24px 24px',
         }} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 mb-6 text-sm font-medium text-primary-100">
-                <Map size={14} />
-                AI-powered civic platform for Lahore
-              </div>
-              <h1 className="text-5xl font-heading font-extrabold mb-6 leading-tight">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+            <div className="min-w-0">
+              <h1 className="font-heading text-4xl font-extrabold leading-[1.08] tracking-[-0.02em] sm:text-5xl lg:text-6xl">
                 {t('home_hero_title')}
               </h1>
-              <p className="text-xl text-primary-200 mb-8 leading-relaxed font-light">
+              <p className="mt-6 max-w-xl text-lg font-light leading-relaxed text-primary-200">
                 {t('home_hero_subtitle')}
               </p>
-              <div className="flex flex-wrap gap-4">
-                <Link to="/map" className="bg-white text-primary-700 px-8 py-3 rounded-lg font-bold hover:bg-primary-50 transition shadow-base">
+              <div className="mt-8 flex flex-wrap gap-4">
+                <Link to="/map" className="rounded-lg bg-white px-8 py-3 font-bold text-primary-700 shadow-base transition hover:bg-primary-50">
                   {t('home_view_live_map')}
                 </Link>
-                {!user && (
-                  <Link to="/register" className="border-2 border-white/60 text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-primary-700 transition">
-                    {t('home_report_now')}
-                  </Link>
-                )}
-                {user && user.role === 'citizen' && (
-                  <Link to="/report" className="border-2 border-white/60 text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-primary-700 transition">
+                {(!user || user.role === 'citizen') && (
+                  <Link
+                    to={user ? '/report' : '/register'}
+                    className="rounded-lg border-2 border-white/60 px-8 py-3 font-bold text-white transition hover:bg-white hover:text-primary-700"
+                  >
                     {t('home_report_now')}
                   </Link>
                 )}
               </div>
-            </div>
-            <div className="hidden md:block">
-              <div className="bg-white rounded-xl p-3 shadow-elevated">
-                <img
-                  src={`data:image/svg+xml;charset=UTF-8,${heroIllustration}`}
-                  alt="Road safety illustration"
-                  className="w-full rounded-lg"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Stats Section */}
-      <section className="bg-neutral-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-heading font-bold text-center mb-12 text-neutral-900">{t('home_our_impact')}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {statCards.map((s, i) => (
-              <Card key={i} variant="flat" className="text-center">
-                <div className={`w-12 h-12 ${s.bg} rounded-lg flex items-center justify-center mx-auto mb-3`}>
-                  <s.icon size={22} className={s.color} />
-                </div>
-                <div className={`text-3xl font-heading font-bold ${s.color} mb-1`}>{s.value}</div>
-                <div className="text-sm text-neutral-500">{s.label}</div>
-              </Card>
-            ))}
+              {/* Impact figures live with the claim they support rather than
+                  occupying a separate band further down the page. */}
+              <dl className="mt-12 grid max-w-lg grid-cols-2 gap-x-8 gap-y-6 border-t border-white/15 pt-8 sm:grid-cols-4 sm:gap-x-6">
+                {statCards.map((stat) => (
+                  <div key={stat.label} className="min-w-0">
+                    <dd className="font-heading text-2xl font-bold leading-none text-white">{stat.value}</dd>
+                    <dt className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-300">{stat.label}</dt>
+                  </div>
+                ))}
+              </dl>
+            </div>
+
+            {/* Live evidence: the newest real reports, not an illustration. */}
+            <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur-sm">
+              <div className="mb-4 flex items-baseline justify-between">
+                <h2 className="font-heading text-sm font-bold text-white">Reported in Lahore</h2>
+                <Link to="/map" className="text-xs font-semibold text-primary-200 underline-offset-4 transition hover:text-white hover:underline">
+                  View all
+                </Link>
+              </div>
+
+              {recent.length === 0 ? (
+                <p className="py-10 text-center text-sm text-primary-300">
+                  No hazards reported yet. Be the first.
+                </p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {recent.map((c) => (
+                    <li key={c.complaint_id} className="rounded-lg bg-white/[0.07] p-3.5">
+                      <div className="flex items-start gap-3">
+                        <span
+                          className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white/25"
+                          style={{ backgroundColor: urgency[c.urgency_level] || urgency.low }}
+                          aria-hidden="true"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-white" title={c.description}>
+                            {c.description}
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-primary-300">
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin size={12} aria-hidden="true" />
+                              {c.ward || 'Lahore'}
+                            </span>
+                            <span>{timeAgo(c.submitted_at)}</span>
+                            <span className="uppercase tracking-wider">{c.urgency_level}</span>
+                            {c.upvotes > 0 && (
+                              <span className="inline-flex items-center gap-0.5">
+                                <ChevronUp size={12} aria-hidden="true" />
+                                {c.upvotes}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-heading font-bold text-neutral-900 mb-3">{t('home_key_features')}</h2>
-            <p className="text-neutral-500 max-w-xl mx-auto">Everything you need to report, track, and resolve road hazards in your community.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {features.map((f, i) => (
-              <div key={i} className="group p-6 rounded-xl border border-neutral-100 hover:border-primary-200 hover:shadow-base transition-all duration-200">
-                <div className={`w-11 h-11 ${f.color} rounded-lg flex items-center justify-center mb-4`}>
-                  <f.icon size={20} />
+      <section className="bg-white py-20 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 className="max-w-2xl font-heading text-3xl font-bold tracking-[-0.01em] text-neutral-900">
+            {t('home_key_features')}
+          </h2>
+          <p className="mt-3 max-w-xl text-neutral-500">
+            Everything you need to report, track, and resolve road hazards in your community.
+          </p>
+
+          {/* The detection model leads at full width and carries its own
+              evidence; the hazard classes are proof of this claim, so they
+              live here instead of in a separate nested card. */}
+          <div className="mt-10 rounded-xl border border-neutral-200 bg-neutral-50 p-6 sm:p-8">
+            <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+              <div>
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+                  <leadFeature.icon size={20} aria-hidden="true" />
                 </div>
-                <h3 className="text-lg font-heading font-bold mb-2 text-neutral-900">{f.title}</h3>
-                <p className="text-neutral-500 text-sm leading-relaxed">{f.desc}</p>
+                <h3 className="mt-4 font-heading text-2xl font-bold text-neutral-900">{leadFeature.title}</h3>
+                <p className="mt-2 leading-relaxed text-neutral-600">{leadFeature.desc}</p>
+                <p className="mt-4 text-sm text-neutral-500">
+                  YOLOv8s, trained on 5,364 images of Lahore roads.
+                </p>
+              </div>
+
+              <div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {hazardTypes.map((h) => (
+                    <div key={h.name} className="flex flex-col rounded-lg bg-white p-3.5 text-center ring-1 ring-neutral-200/70">
+                      <h.icon size={18} className="mx-auto text-neutral-400" aria-hidden="true" />
+                      <p className="mt-2 flex-1 text-sm font-semibold leading-tight text-neutral-900">{h.name}</p>
+                      <p className="mt-1.5 font-mono text-xs tabular-nums text-neutral-400">{h.mAP}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-neutral-400">Detection accuracy per class (mAP50).</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Supporting capabilities: tighter, lighter, clearly secondary. */}
+          <div className="mt-6 grid gap-x-10 gap-y-7 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f) => (
+              <div key={f.title} className="flex gap-4">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${f.color}`}>
+                  <f.icon size={17} aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-neutral-900">{f.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-neutral-500">{f.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -229,55 +283,33 @@ export default function Home() {
       </section>
 
       {/* How It Works */}
-      <section className="bg-neutral-50 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-heading font-bold text-neutral-900 mb-3">{t('home_how_it_works')}</h2>
-            <p className="text-neutral-500">Three simple steps from photo to resolution.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 mb-16 relative">
-            {/* Connecting line (desktop only) */}
-            <div className="hidden md:block absolute top-10 left-[20%] right-[20%] h-0.5 bg-primary-100" />
-            {steps.map((s, i) => (
-              <div key={i} className="text-center relative">
-                <div className="bg-primary-500 text-white w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 shadow-base relative z-10">
-                  <s.icon size={24} />
-                </div>
-                <div className="text-xs font-bold text-primary-500 uppercase tracking-widest mb-2">Step {i + 1}</div>
-                <h3 className="text-lg font-heading font-bold mb-2 text-neutral-900">{s.title}</h3>
-                <p className="text-neutral-500 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
-              </div>
-            ))}
-          </div>
+      <section className="bg-neutral-50 py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 className="font-heading text-3xl font-bold tracking-[-0.01em] text-neutral-900">
+            {t('home_how_it_works')}
+          </h2>
+          <p className="mt-3 text-neutral-500">Three simple steps from photo to resolution.</p>
 
-          {/* Hazard Types */}
-          <Card variant="elevated">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                <AlertTriangle size={18} className="text-primary-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-heading font-bold text-neutral-900">5 Hazard Types Detected</h3>
-                <p className="text-sm text-neutral-500">YOLOv8s model trained on 5,364 images</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              {hazardTypes.map((h, i) => (
-                <div key={i} className="text-center p-4 rounded-lg border border-neutral-100 hover:border-primary-300 hover:bg-primary-50/50 transition-all duration-200 group">
-                  <div className="w-10 h-10 bg-neutral-100 group-hover:bg-primary-100 rounded-lg flex items-center justify-center mx-auto mb-3 transition-colors">
-                    <h.icon size={18} className="text-neutral-500 group-hover:text-primary-600 transition-colors" />
-                  </div>
-                  <p className="font-semibold text-neutral-900 text-sm">{h.name}</p>
-                  <p className="text-xs text-neutral-400 mt-1">mAP50: {h.mAP}</p>
+          <ol className="relative mt-10 grid gap-8 md:grid-cols-3">
+            {/* Connecting line (desktop only) */}
+            <div className="absolute left-[16.667%] right-[16.667%] top-7 hidden h-px bg-primary-200 md:block" aria-hidden="true" />
+            {steps.map((step, i) => (
+              <li key={step.title} className="relative">
+                <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-white shadow-base">
+                  <step.icon size={22} aria-hidden="true" />
                 </div>
-              ))}
-            </div>
-          </Card>
+                <h3 className="mt-4 font-heading text-lg font-bold text-neutral-900">
+                  <span className="text-primary-500">{i + 1}.</span> {step.title}
+                </h3>
+                <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-neutral-500">{step.desc}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="bg-primary-700 text-white py-16 relative overflow-hidden">
+      <section className="relative overflow-hidden bg-primary-700 py-16 text-white">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)',
           backgroundSize: '20px 20px',
