@@ -6,7 +6,7 @@ export function Button({ children, className = '', variant = 'primary', size = '
   const variants = {
     primary:   'bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700',
     secondary: 'border border-primary-500 text-primary-600 hover:bg-primary-50',
-    danger:    'bg-danger text-white hover:bg-red-700',
+    danger:    'bg-danger text-white hover:bg-danger-700',
     ghost:     'text-primary-600 hover:bg-primary-50',
     accent:    'bg-accent text-white hover:bg-accent-dark',
   }
@@ -46,9 +46,9 @@ export function Card({ children, className = '', variant = 'default', ...props }
 export function Alert({ message, type = 'info', className = '', ...props }) {
   const colors = {
     success: 'bg-primary-50 border border-primary-200 text-primary-700',
-    error:   'bg-red-50 border border-red-200 text-red-800',
-    warning: 'bg-amber-50 border border-amber-200 text-amber-800',
-    info:    'bg-info-light border border-blue-200 text-info',
+    error:   'bg-danger-50 border border-danger-200 text-danger-700',
+    warning: 'bg-warning-50 border border-warning-200 text-warning-700',
+    info:    'bg-info-light border border-info-200 text-info',
   }
 
   return (
@@ -82,8 +82,8 @@ export function Badge({ children, variant = 'default', className = '' }) {
   const variants = {
     default:  'bg-neutral-100 text-neutral-700',
     primary:  'bg-primary-100 text-primary-700',
-    danger:   'bg-red-100 text-red-800',
-    warning:  'bg-amber-100 text-amber-800',
+    danger:   'bg-danger-100 text-danger-700',
+    warning:  'bg-warning-100 text-warning-700',
     critical: 'bg-urgency-critical text-white',
     high:     'bg-urgency-high text-white',
     medium:   'bg-urgency-medium text-white',

@@ -13,32 +13,33 @@ import {
   Upload, ScanSearch, Gauge,
 } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
+import { primary, neutral, accent } from '../../theme/colors'
 
 const heroIllustration = encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" role="img" aria-label="Road safety illustration">
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#0f281d"/>
-      <stop offset="55%" stop-color="#1b4a33"/>
-      <stop offset="100%" stop-color="#2f7a55"/>
+      <stop offset="0%" stop-color="${primary[900]}"/>
+      <stop offset="55%" stop-color="${primary[700]}"/>
+      <stop offset="100%" stop-color="${primary[500]}"/>
     </linearGradient>
     <linearGradient id="road" x1="0" x2="0" y1="0" y2="1">
-      <stop offset="0%" stop-color="#2a2924"/>
-      <stop offset="100%" stop-color="#1c1b18"/>
+      <stop offset="0%" stop-color="${neutral[800]}"/>
+      <stop offset="100%" stop-color="${neutral[900]}"/>
     </linearGradient>
   </defs>
   <rect width="800" height="520" fill="url(#bg)"/>
-  <circle cx="650" cy="105" r="56" fill="#f3f1ed" opacity="0.15"/>
-  <rect x="120" y="70" width="120" height="210" rx="14" fill="#143627" opacity="0.72"/>
-  <rect x="260" y="40" width="100" height="255" rx="14" fill="#143627" opacity="0.8"/>
-  <rect x="380" y="88" width="170" height="220" rx="14" fill="#1b4a33" opacity="0.84"/>
+  <circle cx="650" cy="105" r="56" fill="${neutral[100]}" opacity="0.15"/>
+  <rect x="120" y="70" width="120" height="210" rx="14" fill="${primary[800]}" opacity="0.72"/>
+  <rect x="260" y="40" width="100" height="255" rx="14" fill="${primary[800]}" opacity="0.8"/>
+  <rect x="380" y="88" width="170" height="220" rx="14" fill="${primary[700]}" opacity="0.84"/>
   <rect x="150" y="300" width="500" height="118" rx="20" fill="url(#road)"/>
-  <path d="M400 300v118" stroke="#c9a227" stroke-width="10" stroke-dasharray="38 24" stroke-linecap="round"/>
-  <path d="M200 414c80-34 320-34 400 0" fill="none" stroke="#2f7a55" stroke-width="10" opacity="0.35"/>
-  <rect x="610" y="330" width="90" height="38" rx="10" fill="#245f42"/>
-  <rect x="190" y="340" width="85" height="38" rx="10" fill="#2f7a55"/>
-  <circle cx="645" cy="360" r="10" fill="#6fb98e"/>
-  <circle cx="230" cy="360" r="10" fill="#6fb98e"/>
+  <path d="M400 300v118" stroke="${accent.DEFAULT}" stroke-width="10" stroke-dasharray="38 24" stroke-linecap="round"/>
+  <path d="M200 414c80-34 320-34 400 0" fill="none" stroke="${primary[500]}" stroke-width="10" opacity="0.35"/>
+  <rect x="610" y="330" width="90" height="38" rx="10" fill="${primary[600]}"/>
+  <rect x="190" y="340" width="85" height="38" rx="10" fill="${primary[500]}"/>
+  <circle cx="645" cy="360" r="10" fill="${primary[300]}"/>
+  <circle cx="230" cy="360" r="10" fill="${primary[300]}"/>
 </svg>
 `)
 
@@ -131,8 +132,8 @@ export default function Home() {
   const statCards = [
     { value: stats.totalComplaints,    label: t('home_total_complaints'), icon: FileText,   color: 'text-primary-500',    bg: 'bg-primary-50' },
     { value: stats.resolvedComplaints, label: t('home_resolved'),         icon: CheckCircle2, color: 'text-success', bg: 'bg-primary-50' },
-    { value: stats.pendingComplaints,  label: t('home_pending'),          icon: Clock,      color: 'text-urgency-medium', bg: 'bg-amber-50' },
-    { value: stats.avgResolutionTime,  label: t('home_avg_resolution'),   icon: Timer,      color: 'text-urgency-low',    bg: 'bg-cyan-50' },
+    { value: stats.pendingComplaints,  label: t('home_pending'),          icon: Clock,      color: 'text-urgency-medium', bg: 'bg-warning-50' },
+    { value: stats.avgResolutionTime,  label: t('home_avg_resolution'),   icon: Timer,      color: 'text-urgency-low',    bg: 'bg-info-50' },
   ]
 
   return (

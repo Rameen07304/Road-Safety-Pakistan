@@ -1,10 +1,13 @@
-// Urgency level → colors for map pins (must match tailwind.config.js tokens exactly)
+import { urgency, success } from '../theme/colors'
+
+// Urgency level → literal colours for Leaflet map pins.
+// Sourced from the shared palette so they cannot drift from the Tailwind tokens.
 export const urgencyColors = {
-  critical: '#d42020',
-  high:     '#d4501a',
-  medium:   '#b8860b',
-  low:      '#2196a8',
-  resolved: '#2e7d52',
+  critical: urgency.critical,
+  high:     urgency.high,
+  medium:   urgency.medium,
+  low:      urgency.low,
+  resolved: success.DEFAULT,
 }
 
 // Status → display label
@@ -20,9 +23,9 @@ export const statusLabels = {
 export const statusClasses = {
   submitted:   'bg-info-light text-info',
   verified:    'bg-accent-light text-accent-dark',
-  in_progress: 'bg-amber-50 text-urgency-medium',
+  in_progress: 'bg-warning-50 text-urgency-medium',
   resolved:    'bg-primary-50 text-primary-700',
-  rejected:    'bg-red-50 text-danger',
+  rejected:    'bg-danger-50 text-danger',
 }
 
 // Format date to readable string

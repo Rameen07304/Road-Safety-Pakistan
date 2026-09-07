@@ -135,7 +135,7 @@ export default function TrackComplaint() {
                   {complaint.cluster_progression && (
                     <span className={`ml-auto inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
                       complaint.cluster_progression === 'Worsening'
-                        ? 'bg-red-100 text-danger'
+                        ? 'bg-danger-100 text-danger'
                         : complaint.cluster_progression === 'Improving'
                           ? 'bg-primary-50 text-primary-600'
                           : 'bg-neutral-100 text-neutral-500'
@@ -149,7 +149,7 @@ export default function TrackComplaint() {
 
               {/* Under review notice */}
               {complaint.flagged && (
-                <div className="flex items-center gap-3 rounded-lg border border-warning/20 bg-amber-50 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-lg border border-warning/20 bg-warning-50 px-4 py-3">
                   <Clock size={18} className="text-warning flex-shrink-0" />
                   <p className="text-sm font-semibold text-urgency-medium">
                     This complaint is currently under review by our moderation team.

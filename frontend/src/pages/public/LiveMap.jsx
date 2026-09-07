@@ -216,7 +216,7 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
                       {complaint.cluster_progression && (
                         <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
                           complaint.cluster_progression === 'Worsening'
-                            ? 'bg-red-100 text-danger'
+                            ? 'bg-danger-100 text-danger'
                             : complaint.cluster_progression === 'Improving'
                               ? 'bg-primary-50 text-primary-600'
                               : 'bg-neutral-100 text-neutral-500'
@@ -448,9 +448,9 @@ export default function LiveMap() {
                     const isSelected = activeComplaintId === complaint.complaint_id
                     const isCritical = getPriorityKey(complaint) === 'critical'
                     const selectedClass = isSelected
-                      ? 'border-danger bg-danger text-white shadow-lg shadow-red-200'
+                      ? 'border-danger bg-danger text-white shadow-lg shadow-danger-200'
                       : isCritical
-                        ? 'border-red-200 bg-red-50 hover:bg-red-100'
+                        ? 'border-danger-200 bg-danger-50 hover:bg-danger-100'
                         : 'border-neutral-200 bg-white hover:bg-neutral-50'
 
                     return (
@@ -467,7 +467,7 @@ export default function LiveMap() {
                         <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${isSelected ? 'bg-white text-danger' : getStatusClass(complaint)}`}>{complaint.status || 'pending'}</span>
                       </div>
                       <div className={`mt-2 text-sm font-semibold ${isSelected ? 'text-white' : 'text-neutral-800'}`}>{complaint.description || complaint.complaint_id}</div>
-                      <div className={`mt-1 text-xs ${isSelected ? 'text-red-100' : 'text-neutral-400'}`}>{complaint.ward || complaint.address || 'Lahore'}</div>
+                      <div className={`mt-1 text-xs ${isSelected ? 'text-danger-100' : 'text-neutral-400'}`}>{complaint.ward || complaint.address || 'Lahore'}</div>
                     </button>
                       )
                   }) : (
@@ -582,7 +582,6 @@ export default function LiveMap() {
                       style={{ backgroundColor: urgencyColors[level] }}
                     />
                     {t(`urgency_${level}`)}
-                    <span className="text-[10px] text-neutral-300 font-mono">{urgencyColors[level]}</span>
                   </div>
                 ))}
               </div>

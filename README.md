@@ -11,14 +11,18 @@
 ---
 
 ## 📋 Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Model Performance](#model-performance)
-- [Prerequisites](#prerequisites)
-- [Complete Setup Guide](#complete-setup-guide)
-- [Project Structure](#project-structure)
-- [API Endpoints](#api-endpoints)
-- [Team](#team)
+- [Features](#-features)
+- [Tech Stack](#️-tech-stack)
+- [Model Performance](#-model-performance)
+- [Prerequisites](#-prerequisites)
+- [Complete Setup Guide](#-complete-setup-guide)
+- [Running the App](#-running-the-app)
+- [Testing](#-testing)
+- [Design System](#-design-system)
+- [Project Structure](#-project-structure)
+- [API Endpoints](#-api-endpoints)
+- [Troubleshooting](#-troubleshooting)
+- [Team](#-team)
 
 ---
 
@@ -31,6 +35,9 @@
 - 🏛️ Government admin dashboard with urgency sorting
 - 🔐 JWT authentication (Citizen + Admin roles)
 - ☁️ Cloudinary image storage
+- 🚩 Spam / duplicate detection (rate limits, perceptual image hashing)
+- 📍 Duplicate-report clustering within a 50 m radius
+- 🌐 Bilingual UI (English / اردو)
 
 ---
 
@@ -44,6 +51,7 @@
 | Auth       | JWT via SimpleJWT                 |
 | Images     | Cloudinary (free tier)            |
 | Maps       | OpenStreetMap + Leaflet (free)    |
+| Icons      | lucide-react                      |
 | Database   | SQLite (development)              |
 
 ---
@@ -59,12 +67,12 @@
 | Garbage         | 0.409 | 0.169    |
 | **Overall**     | **0.808** | **0.525** |
 
+> ⚠️ The `garbage` class is significantly weaker than the rest and is the
+> main candidate for retraining or dataset augmentation.
+
 ---
 
 ## ✅ Prerequisites
-
-Before you begin make sure you have these installed.
-Click each link for the official download page:
 
 | Tool        | Version  | Check Command         | Download |
 |-------------|----------|-----------------------|----------|
@@ -80,29 +88,318 @@ Click each link for the official download page:
 ### Step 1 — Clone the Repository
 
 ```bash
-git clone https://github.com/Rameen07304/road-safety-pakistan.git
-cd road-safety-pakistan
+git clone https://github.com/Rameen07304/Road-Safety-Pakistan.git
+cd Road-Safety-Pakistan
 ```
 
 ---
 
 ### Step 2 — Get the AI Model (best.pt)
 
-The trained YOLOv8 model is NOT stored in GitHub
-(too large). Download it manually:
+The trained YOLOv8 model is **not** stored in GitHub (too large, and `*.pt`
+is gitignored). Download it manually:
 
-1. Download `best.pt` from this Google Drive link:
-   👉 **[Download best.pt — 22.5MB](https://drive.google.com/file/d/1G8ZBM8kwnXf4ROJbr2dSXD0KKHuVUKjw/view?usp=drive_link)**
+1. Download `best.pt`:
+   👉 **[Download best.pt — 22.5 MB](https://drive.google.com/file/d/1G8ZBM8kwnXf4ROJbr2dSXD0KKHuVUKjw/view?usp=drive_link)**
 
-2. Place it in the correct folder:
-road-safety-pakistan/
-└── backend/
-└── ml_models/
-└── best.pt   ← place it here
+2. Place it here:
 
-3. Verify it is in the right place:
-```bash
-   # You should see best.pt listed
+   ```
+   Road-Safety-Pakistan/
+   └── backend/
+       └── ml_models/
+           └── best.pt   ← place it here
+   ```
+
+3. Verify:
+
+   ```bash
    ls backend/ml_models/
+   ```
+
+> The app still runs without `best.pt` — `detection/detector.py` falls back to
+> a hosted Hugging Face Space. If both are unavailable, complaints are saved
+> with no detected classes and a correspondingly low urgency score.
+
+---
+
+### Step 3 — Backend Setup
+
+```bash
+cd backend
+
+# Create and activate a virtual environment
+python -m venv .venv
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+# macOS / Linux
+source .venv/bin/activate
+
+# Install dependencies (this pulls torch + ultralytics, ~1.2 GB)
+pip install -r requirements.txt
 ```
 
+Create your environment file:
+
+```bash
+cp .env.example .env      # Windows: copy .env.example .env
+```
+
+Then open `.env` and fill in real values. At minimum set `SECRET_KEY`, and add
+your Cloudinary credentials if you want image uploads to work.
+
+Apply migrations and create an admin (`manage.py` already defaults to
+`core.settings.dev`, so no `--settings` flag is needed locally):
+
+```bash
+python manage.py migrate
+python manage.py createadmin
+```
+
+`createadmin` reads `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env` and defaults
+to `admin@roadsafety.pk`.
+
+---
+
+### Step 4 — Frontend Setup
+
+```bash
+cd ../frontend
+npm install
+```
+
+---
+
+## ▶️ Running the App
+
+Run these in **two separate terminals**.
+
+**Terminal 1 — backend** (http://localhost:8000):
+
+```bash
+cd backend
+python manage.py runserver
+```
+
+**Terminal 2 — frontend** (http://localhost:5173):
+
+```bash
+cd frontend
+npm run dev
+```
+
+Then open **http://localhost:5173**.
+
+> On Windows, Vite may bind to IPv6 only. If `127.0.0.1:5173` refuses the
+> connection, use `localhost:5173`.
+
+Optional — seed sample complaints for browsing the map and admin queue:
+
+```bash
+cd backend
+python manage.py seed_browser_test
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+cd backend
+python manage.py smoke_test
+```
+
+`smoke_test` covers 38 assertions across the full complaint pipeline:
+department auto-assignment, PII-free summaries, duplicate clustering and
+progression, rate limiting, perceptual image-hash duplicate detection, the
+admin approve/reject flow, and the blur/darkness image-quality gate. It is
+idempotent, so it is safe to re-run against an existing dev database.
+
+Frontend checks:
+
+```bash
+cd frontend
+npm run lint        # eslint
+npm run build       # production build
+```
+
+> There is currently **no automated test suite in CI**. Porting the smoke test
+> to `pytest-django` and adding a browser test run on GitHub Actions is the
+> highest-value next step — several defects fixed recently (a 500 that
+> discarded valid complaints, non-deterministic department routing) would have
+> been caught automatically.
+
+---
+
+## 🎨 Design System
+
+All colours come from a single source of truth:
+**`frontend/src/theme/colors.js`**.
+
+`tailwind.config.js` imports that file, and any JavaScript needing a literal
+colour (Leaflet map pins, inline SVG) imports it too — so the palette cannot
+drift between the config and hand-copied hex strings.
+
+| Token      | Purpose                                  |
+|------------|------------------------------------------|
+| `primary`  | Brand green, 50–900                      |
+| `neutral`  | Warm greys for text and surfaces, 50–900 |
+| `urgency`  | `low` / `medium` / `high` / `critical`   |
+| `danger`   | Errors and destructive actions           |
+| `warning`  | Cautions                                 |
+| `info`     | Informational surfaces                   |
+| `success`  | Positive confirmation                    |
+| `accent`   | Gold highlights                          |
+
+**Rules**
+
+- Never use Tailwind's stock palette (`red-500`, `amber-100`, `blue-200`, …).
+  Those hues do not match the tokens and cause visible drift.
+- For text on a light tinted surface use the **`700`** step, not `DEFAULT`.
+  Every `700`-on-`50` pair clears WCAG AA; `warning.DEFAULT` on `warning.50`
+  is only 3.07:1 and fails.
+- Fonts: `font-heading` (Plus Jakarta Sans) for headings, `font-sans` (Inter)
+  for body.
+
+---
+
+## 📁 Project Structure
+
+```
+Road-Safety-Pakistan/
+├── backend/
+│   ├── accounts/            # Custom user model, JWT auth, permissions
+│   │   └── management/commands/
+│   │       ├── createadmin.py
+│   │       ├── seed_browser_test.py
+│   │       └── smoke_test.py
+│   ├── analytics/           # Dashboard stats, ward analytics, PDF reports
+│   ├── complaints/          # Complaint model, clustering, spam flags, API
+│   ├── detection/           # YOLOv8 inference, sentiment, urgency scoring
+│   │   ├── detector.py      # Hugging Face Space + local model fallback
+│   │   ├── sentiment.py     # Roman Urdu / English keyword analysis
+│   │   └── urgency.py       # Hazard score × sentiment multiplier
+│   ├── core/settings/       # base.py / dev.py / prod.py
+│   ├── ml_models/best.pt    # (downloaded separately — gitignored)
+│   └── requirements.txt
+└── frontend/
+    ├── src/
+    │   ├── components/      # Header, Footer, UI primitives, Toast
+    │   ├── context/         # AuthContext, LanguageContext
+    │   ├── hooks/           # useDocumentTitle
+    │   ├── pages/
+    │   │   ├── public/      # Home, LiveMap, TrackComplaint
+    │   │   ├── auth/        # Login, Register, ForgotPassword
+    │   │   ├── citizen/     # Dashboard, MyComplaints, ReportHazard
+    │   │   └── admin/       # Dashboard, ComplaintDetail, WardAnalytics,
+    │   │                    #   FlaggedQueue
+    │   ├── services/api.js  # Axios instance + token refresh
+    │   ├── theme/colors.js  # Single source of truth for the palette
+    │   ├── translations/    # English / Urdu dictionary
+    │   └── utils/
+    └── tailwind.config.js
+```
+
+---
+
+## 🔌 API Endpoints
+
+Base URL: `http://localhost:8000`
+
+**Auth** — `/api/auth/`
+
+| Method | Path                | Auth   | Description                    |
+|--------|---------------------|--------|--------------------------------|
+| POST   | `register/`         | Public | Create a citizen account       |
+| POST   | `login/`            | Public | Returns access + refresh token |
+| POST   | `logout/`           | User   | Blacklists the refresh token   |
+| GET    | `profile/`          | User   | Current user profile           |
+| POST   | `change-password/`  | User   | Change password                |
+| POST   | `password-reset/`   | Public | Request a reset email          |
+| POST   | `token/refresh/`    | Public | Exchange refresh for access    |
+
+**Complaints** — `/api/complaints/`
+
+| Method | Path                       | Auth   | Description                       |
+|--------|----------------------------|--------|-----------------------------------|
+| GET    | `` (list)                  | Public | All non-flagged complaints        |
+| POST   | `submit/`                  | User   | File a complaint (runs detection) |
+| POST   | `upload-image/`            | User   | Upload photo + early detection    |
+| GET    | `map/`                     | Public | Map markers                       |
+| GET    | `track/?complaint_id=…`    | Public | Track by complaint ID             |
+| GET    | `my/`                      | User   | Complaints filed by current user  |
+| GET    | `my-dashboard/`            | User   | Citizen dashboard summary         |
+| GET    | `<complaint_id>/`          | Public | Complaint detail                  |
+| POST   | `<complaint_id>/upvote/`   | User   | Upvote (one per user)             |
+
+**Detection** — `/api/detect/`
+
+| Method | Path        | Auth   | Description                      |
+|--------|-------------|--------|----------------------------------|
+| POST   | `analyze/`  | User   | Analyze an image                 |
+| POST   | `detect/`   | Public | Public detection demo endpoint   |
+
+**Analytics** — `/api/analytics/`
+
+| Method | Path           | Auth   | Description                     |
+|--------|----------------|--------|---------------------------------|
+| GET    | `summary/`     | Public | Headline stats                  |
+| GET    | `hazards/`     | Public | Hazard-type breakdown           |
+| GET    | `wards/`       | Admin  | Per-ward performance            |
+| GET    | `trends/`      | Admin  | Complaint trends over time      |
+| GET    | `report/pdf/`  | Admin  | Downloadable PDF report         |
+
+**Admin** — `/api/admin/`
+
+| Method | Path                              | Auth  | Description              |
+|--------|-----------------------------------|-------|--------------------------|
+| GET    | `complaints/flagged/`             | Admin | Flagged review queue     |
+| PATCH  | `complaints/<id>/status/`         | Admin | Update complaint status  |
+| POST   | `complaints/<id>/approve/`        | Admin | Clear a flag             |
+| POST   | `complaints/<id>/reject/`         | Admin | Reject a flagged report  |
+
+Django admin UI is at `/admin-rsp-secure/` (configurable via `ADMIN_URL`).
+
+---
+
+## 🔧 Troubleshooting
+
+**`ModuleNotFoundError: No module named 'cv2'`**
+Dependencies are out of date. Re-run `pip install -r requirements.txt` inside
+the activated virtual environment.
+
+**`Model not found at .../ml_models/best.pt`**
+Expected if you skipped Step 2. Detection falls back to the Hugging Face
+Space; download `best.pt` for local inference.
+
+**Complaint submission returns 500 / images do not appear**
+Cloudinary credentials are missing or wrong in `backend/.env`. Complaints
+still save (the annotated preview is skipped and logged as a warning), but
+uploads through `/api/complaints/upload-image/` will fail.
+
+**`127.0.0.1:5173` refuses to connect**
+Vite may be bound to IPv6 only on Windows. Use `http://localhost:5173`.
+
+**`UNIQUE constraint failed: accounts_user.phone`**
+A user with that phone number already exists. Every one of `email`, `phone`
+and `cnic` is unique on the user model.
+
+**Never commit `backend/.venv/`**
+It is roughly 1.2 GB across ~27,000 files. It is gitignored — keep it that way.
+
+---
+
+## 👥 Team
+
+<!-- Add team members here. -->
+
+| Name | Role |
+|------|------|
+|      |      |
+
+---
+
+## 📄 License
+
+Academic project. All rights reserved.

@@ -166,7 +166,7 @@ export default function Header() {
           {user && (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 bg-danger text-white px-4 py-2.5 rounded-lg hover:bg-red-700 transition mt-2 text-sm font-semibold"
+              className="w-full flex items-center justify-center gap-2 bg-danger text-white px-4 py-2.5 rounded-lg hover:bg-danger-700 transition mt-2 text-sm font-semibold"
             >
               <LogOut size={14} />
               {t('nav_logout')}

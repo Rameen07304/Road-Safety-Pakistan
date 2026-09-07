@@ -136,7 +136,7 @@ export default function Dashboard() {
             <div className="text-sm text-neutral-500">Total Complaints</div>
           </Card>
           <Card variant="flat" className="text-center">
-            <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <div className="w-10 h-10 bg-warning-50 rounded-lg flex items-center justify-center mx-auto mb-3">
               <Clock size={18} className="text-urgency-medium" />
             </div>
             <div className="text-3xl font-heading font-bold text-urgency-medium mb-1">{stats.pending}</div>
@@ -150,7 +150,7 @@ export default function Dashboard() {
             <div className="text-sm text-neutral-500">Resolved</div>
           </Card>
           <Card variant="flat" className="text-center">
-            <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center mx-auto mb-3">
+            <div className="w-10 h-10 bg-danger-50 rounded-lg flex items-center justify-center mx-auto mb-3">
               <AlertTriangle size={18} className="text-urgency-critical" />
             </div>
             <div className="text-3xl font-heading font-bold text-danger mb-1">{stats.critical}</div>
