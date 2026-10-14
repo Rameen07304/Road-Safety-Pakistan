@@ -1,10 +1,10 @@
-import { 
-  createContext, 
+import {
+  createContext,
   useContext,
-  useState, 
-  useEffect 
+  useState,
+  useEffect
 } from 'react'
-import API from '../services/api'
+import API, { refreshAccessToken, setAccessToken, SESSION_HINT } from '../services/api'
 
 /* eslint-disable react-refresh/only-export-components */
 
@@ -12,40 +12,40 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
-  const [loading, setLoading] = useState(() => !!localStorage.getItem('access_token'))
+  const [loading, setLoading] = useState(() => !!localStorage.getItem(SESSION_HINT))
 
   useEffect(() => {
-    const token = localStorage.getItem(
-      'access_token')
-    if (token) {
-      API.get('/api/auth/profile/')
-        .then(res => setUser(res.data))
-        .catch(() => {
-          localStorage.clear()
-          setUser(null)
-        })
-        .finally(() => setLoading(false))
-    }
+    // Tokens used to live in localStorage; drop any left over from older builds.
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+
+    if (!localStorage.getItem(SESSION_HINT)) return
+    // Restore the session from the httpOnly refresh cookie.
+    refreshAccessToken()
+      .then(() => API.get('/api/auth/profile/'))
+      .then(res => setUser(res.data))
+      .catch(() => {
+        localStorage.removeItem(SESSION_HINT)
+        setAccessToken(null)
+        setUser(null)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const login = (userData, tokens) => {
-    localStorage.setItem(
-      'access_token', tokens.access)
-    localStorage.setItem(
-      'refresh_token', tokens.refresh)
+    setAccessToken(tokens.access)
+    localStorage.setItem(SESSION_HINT, '1')
     setUser(userData)
   }
 
   const logout = async () => {
     try {
-      const refresh = localStorage.getItem(
-        'refresh_token')
-      await API.post('/api/auth/logout/', 
-        { refresh })
+      await API.post('/api/auth/logout/')
     } catch {
       // Logout API call is best-effort; ignore errors silently
     }
-    localStorage.clear()
+    setAccessToken(null)
+    localStorage.removeItem(SESSION_HINT)
     setUser(null)
   }
 
@@ -78,5 +78,3 @@ export const useAuth = () => {
   }
   return context
 }
-
-export default AuthContext

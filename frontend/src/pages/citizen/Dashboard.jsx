@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import { api } from '../../services/api'
@@ -7,36 +7,25 @@ import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
-import { Card, Badge, Button } from '../../components/UI'
-import { urgencyColors, statusLabels, statusClasses, formatDate } from '../../utils/urgencyHelpers'
-import { Loader2, Inbox, Map as MapIcon } from 'lucide-react'
+import { Badge, Button, PageTitle, StatStrip, Alert } from '../../components/UI'
+import { urgencyMarkSvg, statusClasses, formatDate } from '../../utils/urgencyHelpers'
+import { Loader2, ArrowRight } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
 
-const markerIcon = (urgencyLevel) => {
-  const color = urgencyColors[urgencyLevel?.toLowerCase()] || urgencyColors.low
-  return L.divIcon({
+const markerIcon = (urgencyLevel) =>
+  L.divIcon({
     className: '',
-    html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(28,27,24,0.18)"></span>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
-    popupAnchor: [0, -9],
+    html: urgencyMarkSvg(urgencyLevel?.toLowerCase(), 20),
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10],
   })
-}
-
-function StatCard({ label, value, accent }) {
-  return (
-    <Card variant="flat" className="text-center">
-      <div className={`text-4xl font-heading font-bold ${accent}`}>{value}</div>
-      <div className="mt-1 text-sm font-semibold text-neutral-500">{label}</div>
-    </Card>
-  )
-}
 
 export default function Dashboard() {
-  useDocumentTitle('My Dashboard')
+  useDocumentTitle('dash_title')
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, tv, tvList, locale, isUrdu } = useLanguage()
   const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -49,7 +38,7 @@ export default function Dashboard() {
         setData(response.data)
       } catch (err) {
         console.error('Failed to fetch dashboard:', err)
-        setError('Failed to load your dashboard. Please try again.')
+        setError('dash_load_failed')
       } finally {
         setLoading(false)
       }
@@ -64,85 +53,77 @@ export default function Dashboard() {
     ? [Number(locations[0].latitude), Number(locations[0].longitude)]
     : [31.5204, 74.3587]
 
+  const welcome = `${t('dash_welcome')}${user?.full_name ? `${isUrdu ? '،' : ','} ${user.full_name}` : ''}. ${t('dash_overview')}`
+
   return (
     <>
       <Header />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="mb-8">
-          <h1 className="text-3xl font-heading font-bold text-neutral-900 mb-2">{t('dash_title')}</h1>
-          <p className="text-neutral-500">{t('dash_welcome')}{user?.full_name ? `, ${user.full_name}` : ''}. {t('dash_overview')}</p>
-        </div>
+      <PageTitle
+        titleKey="dash_title"
+        subtitle={welcome}
+        actions={
+          <Link to="/report" className="inline-flex h-10 items-center gap-2 rounded-sm bg-white px-4 text-sm font-semibold text-sign-700 hover:bg-sign-50">
+            {t('nav_report_hazard')}
+            <ArrowRight size={15} aria-hidden="true" className="rtl:-scale-x-100" />
+          </Link>
+        }
+      />
 
+      <main className="mx-auto max-w-page px-4 py-8 sm:px-6 lg:px-8">
         {loading ? (
-          <div className="flex justify-center items-center h-96">
-            <Loader2 size={36} className="text-primary-500 animate-spin" />
+          <div className="flex h-72 items-center justify-center" role="status">
+            <Loader2 size={28} className="animate-spin text-neutral-500" aria-hidden="true" />
           </div>
         ) : error ? (
-          <Card className="text-center py-12">
-            <p className="text-danger font-semibold">{error}</p>
-          </Card>
+          <Alert message={t(error)} type="error" />
         ) : (
           <div className="space-y-8">
-            {/* Statistics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard label={t('dash_total_submitted')} value={stats.total} accent="text-neutral-900" />
-              <StatCard label={t('dash_resolved')} value={stats.resolved} accent="text-success" />
-              <StatCard label={t('dash_in_progress')} value={stats.in_progress} accent="text-urgency-medium" />
-              <StatCard label={t('dash_pending')} value={stats.pending} accent="text-info" />
-            </div>
+            <StatStrip
+              items={[
+                { label: t('dash_total_submitted'), value: stats.total },
+                { label: t('dash_pending'), value: stats.pending },
+                { label: t('dash_in_progress'), value: stats.in_progress },
+                { label: t('dash_resolved'), value: stats.resolved },
+              ]}
+            />
 
-            <div className="grid lg:grid-cols-2 gap-8">
-              {/* Most recent complaint */}
-              <Card>
-                <h2 className="text-lg font-heading font-bold text-neutral-800 mb-4">{t('dash_most_recent')}</h2>
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-12">
+              <section className="lg:col-span-5">
+                <h2 className="mb-3 text-[17px] font-semibold">{t('dash_most_recent')}</h2>
                 {recent ? (
-                  <div
-                    role="link"
-                    tabIndex={0}
-                    aria-label={`Open complaint ${recent.complaint_id}`}
-                    className="cursor-pointer rounded-lg border border-neutral-200 p-4 transition hover:shadow-base hover:border-primary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        navigate(`/complaint/${recent.complaint_id}`)
-                      }
-                    }}
-                    onClick={() => navigate(`/complaint/${recent.complaint_id}`)}
+                  <Link
+                    to={`/complaint/${recent.complaint_id}`}
+                    aria-label={t('common_open_complaint', { id: recent.complaint_id })}
+                    className="block border border-neutral-200 bg-white p-5 transition-colors hover:border-neutral-400"
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-heading font-bold text-neutral-900">{recent.complaint_id}</h3>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="font-semibold tnum" dir="ltr">{recent.complaint_id}</span>
                       <Badge variant={recent.urgency_level?.toLowerCase()}>
-                        {recent.urgency_level} ({recent.urgency_score}/100)
+                        {tv('urgency', recent.urgency_level)} <span className="font-normal text-neutral-500 tnum">{recent.urgency_score}/100</span>
                       </Badge>
                     </div>
-                    <p className="text-neutral-600 mb-3 line-clamp-2">
-                      {recent.detected_classes?.join(', ') || 'Hazard report'}
+                    <p className="mt-3 text-[15px] text-neutral-800">
+                      {tvList('hazard', recent.detected_classes) || t('dash_hazard_report')}
                     </p>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-500">
-                      <span>Filed: {formatDate(recent.submitted_at)}</span>
-                      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${statusClasses[recent.status] || 'bg-neutral-100 text-neutral-700'}`}>
-                        {statusLabels[recent.status] || recent.status}
+                    <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-neutral-200 pt-3 text-sm text-neutral-600">
+                      <span>{t('dash_filed', { date: formatDate(recent.submitted_at, locale) })}</span>
+                      <span className={`rounded-sm px-2 py-0.5 text-xs font-semibold ${statusClasses[recent.status] || 'bg-neutral-100 text-neutral-700'}`}>
+                        {tv('status', recent.status)}
                       </span>
                     </div>
-                  </div>
+                  </Link>
                 ) : (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-neutral-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <Inbox size={28} className="text-neutral-300" />
-                    </div>
-                    <p className="text-neutral-500 mb-4">{t('dash_no_complaints')}</p>
-                    <Button onClick={() => navigate('/report')}>{t('dash_report_first')}</Button>
+                  <div className="border border-dashed border-neutral-300 bg-white px-5 py-10 text-center">
+                    <p className="text-neutral-600">{t('dash_no_complaints')}</p>
+                    <Button className="mt-5" onClick={() => navigate('/report')}>{t('dash_report_first')}</Button>
                   </div>
                 )}
-              </Card>
+              </section>
 
-              {/* Personal complaint map */}
-              <Card className="p-0 overflow-hidden">
-                <div className="p-6 pb-0">
-                  <h2 className="text-lg font-heading font-bold text-neutral-800 mb-4">{t('dash_my_locations')}</h2>
-                </div>
+              <section className="lg:col-span-7">
+                <h2 className="mb-3 text-[17px] font-semibold">{t('dash_my_locations')}</h2>
                 {locations.length ? (
-                  <div className="h-80">
+                  <div className="h-80 border border-neutral-200">
                     <MapContainer center={mapCenter} zoom={12} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
                       <TileLayer
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -156,8 +137,8 @@ export default function Dashboard() {
                         >
                           <Popup>
                             <div className="text-sm">
-                              <p className="font-heading font-bold text-neutral-900">{loc.complaint_id}</p>
-                              <p className="text-neutral-600">{statusLabels[loc.status] || loc.status}</p>
+                              <Link to={`/complaint/${loc.complaint_id}`} className="font-semibold text-primary-600 tnum">{loc.complaint_id}</Link>
+                              <p className="text-neutral-600">{tv('status', loc.status)}</p>
                             </div>
                           </Popup>
                         </Marker>
@@ -165,18 +146,15 @@ export default function Dashboard() {
                     </MapContainer>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-80 px-6 text-center">
-                    <div className="w-16 h-16 bg-neutral-50 rounded-xl flex items-center justify-center mb-4">
-                      <MapIcon size={28} className="text-neutral-300" />
-                    </div>
-                    <p className="text-neutral-500">{t('dash_no_locations')}</p>
+                  <div className="flex h-80 items-center justify-center border border-dashed border-neutral-300 bg-white px-6 text-center">
+                    <p className="text-neutral-600">{t('dash_no_locations')}</p>
                   </div>
                 )}
-              </Card>
+              </section>
             </div>
           </div>
         )}
-      </div>
+      </main>
       <Footer />
     </>
   )

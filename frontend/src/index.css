@@ -3,19 +3,134 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply font-sans bg-neutral-50 text-neutral-900 antialiased;
+    font-size: 15px;
+    line-height: 1.55;
+    caret-color: theme('colors.primary.500');
   }
   * {
     @apply box-border;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading;
+    @apply font-heading text-neutral-900;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    text-wrap: balance;
   }
+  ::selection {
+    background: theme('colors.primary.100');
+    color: theme('colors.neutral.900');
+  }
+  /* One focus treatment for every control, square to match the system. */
+  :focus-visible {
+    outline: 2px solid theme('colors.primary.500');
+    outline-offset: 2px;
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: theme('colors.neutral.500');
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: theme('colors.primary.500');
+  }
+  /* Thin, square scrollbars in the ink scale. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.neutral.300') transparent;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: theme('colors.neutral.300'); }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
+
+@layer components {
+  /* Small label voice: condensed Archivo caps for field labels, table heads
+     and legends. Never used as a kicker above a heading. */
+  .label {
+    font-size: 11px;
+    font-weight: 600;
+    font-stretch: 87.5%;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: theme('colors.neutral.500');
+  }
+  /* Figures that are compared or copied: IDs, counts, coordinates. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Standard text field: square, hairline, survey-blue focus. */
+  .field {
+    @apply w-full border border-neutral-300 bg-white px-3 text-[15px] text-neutral-900 rounded-sm transition-colors;
+    min-height: 40px;
+  }
+  .field:hover {
+    border-color: theme('colors.neutral.400');
+  }
+  .field:focus {
+    outline: none;
+    border-color: theme('colors.primary.500');
+    box-shadow: 0 0 0 1px theme('colors.primary.500');
+  }
+  textarea.field {
+    @apply py-2.5;
+  }
+  /* Data tables: ruled rows, condensed heads, tabular figures. */
+  .data-table {
+    @apply w-full text-sm;
+    border-collapse: collapse;
+  }
+  .data-table th {
+    @apply label px-3 py-2.5 text-start font-semibold sm:px-4;
+    border-bottom: 1px solid theme('colors.neutral.300');
+    white-space: nowrap;
+  }
+  .data-table td {
+    @apply px-3 py-3 align-middle sm:px-4;
+    border-bottom: 1px solid theme('colors.neutral.200');
+  }
+  .data-table tbody tr:hover {
+    background: theme('colors.neutral.50');
+  }
+}
+
+/* Urdu reads larger and taller than Latin at the same size. */
+html[lang='ur'] body {
+  line-height: 1.8;
+}
+html[lang='ur'] .label {
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 12px;
 }
 
 /* Leaflet map fixes */
 .leaflet-container {
   z-index: 1;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Archivo', 'Noto Naskh Arabic', sans-serif;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 2px;
+  box-shadow: 0 6px 20px rgba(22, 25, 28, 0.12);
+}
+.leaflet-bar a,
+.leaflet-bar {
+  border-radius: 2px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

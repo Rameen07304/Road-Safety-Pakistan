@@ -1,6 +1,7 @@
 import re
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 User = get_user_model()
@@ -38,6 +39,13 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         if password != confirm_password:
             raise serializers.ValidationError({"password": "Passwords do not match."})
+
+        # AUTH_PASSWORD_VALIDATORS were configured but never run on the API, so
+        # a one-character password was accepted.
+        try:
+            validate_password(password, User(email=data.get("email"), full_name=data.get("full_name")))
+        except Exception as exc:
+            raise serializers.ValidationError({"password": list(getattr(exc, "messages", [str(exc)]))})
 
         if id_type == "cnic":
             if not cnic:
@@ -130,5 +138,10 @@ class ChangePasswordSerializer(serializers.Serializer):
 
         if old_password == new_password:
             raise serializers.ValidationError({"new_password": "The new password must be different from the old password."})
+
+        try:
+            validate_password(new_password, self.context.get("user"))
+        except Exception as exc:
+            raise serializers.ValidationError({"new_password": list(getattr(exc, "messages", [str(exc)]))})
 
         return data

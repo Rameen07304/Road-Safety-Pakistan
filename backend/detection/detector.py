@@ -1,11 +1,14 @@
 import base64
 import io
+import logging
 import os
 import re
 import requests
 
 from django.conf import settings
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 model = None
 CLASS_NAMES = [
@@ -49,23 +52,24 @@ def _prepare_local_source(image_input):
         image_data = re.sub(r"^data:image/[^;]+;base64,", "", image_input)
         return Image.open(io.BytesIO(base64.b64decode(image_data))).convert("RGB")
 
-    return image_input
+    if isinstance(image_input, Image.Image):
+        return image_input
+    # Never treat a string as a filesystem path: callers pass user-supplied URLs.
+    raise ValueError("Unsupported image source")
 
 
 def _call_huggingface_space(image_input):
     source = _prepare_local_source(image_input)
-    if isinstance(source, Image.Image):
-        buffered = io.BytesIO()
-        source.save(buffered, format="PNG")
-        image_bytes = buffered.getvalue()
-    else:
-        with open(source, "rb") as image_file:
-            image_bytes = image_file.read()
+    buffered = io.BytesIO()
+    source.save(buffered, format="PNG")
+    image_bytes = buffered.getvalue()
 
     response = requests.post(
         f"{HF_SPACE_BASE}/detect",
         files={"image": ("image.png", image_bytes, "image/png")},
-        timeout=30,
+        # The Space sleeps when idle and its first request after waking can
+        # take well over 30 s; a short timeout dropped detection silently.
+        timeout=90,
     )
     response.raise_for_status()
     return response.json()
@@ -137,7 +141,7 @@ def analyze_image(image_input):
                     "annotated_image_base64": annotated_b64,
                 }
     except Exception:
-        pass
+        logger.warning("Hugging Face detection failed", exc_info=True)
 
     # If HF failed or returned nothing, fall back to local model if available
     if model is None:

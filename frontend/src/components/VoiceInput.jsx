@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Mic, Square, Info } from 'lucide-react'
 import useSpeechRecognition from '../hooks/useSpeechRecognition'
+import { useLanguage } from '../context/LanguageContext'
 
 // Chrome recognises ur-PK well. Pakistani Punjabi is written in Shahmukhi and
 // the browser engines only offer Punjabi in Gurmukhi (pa-IN), which would
@@ -17,14 +18,15 @@ const LANGUAGES = [
  * form keeps working exactly as before.
  */
 export default function VoiceInput({ onTranscript, disabled = false }) {
+  const { t } = useLanguage()
   const [lang, setLang] = useState(LANGUAGES[0].code)
   const { supported, listening, interim, error, start, stop } = useSpeechRecognition({ lang })
 
   if (!supported) {
     return (
-      <p className="mb-3 flex items-center gap-2 text-xs text-neutral-400">
+      <p className="mb-3 flex items-center gap-2 text-xs text-neutral-500">
         <Info size={13} aria-hidden="true" />
-        Voice input needs Chrome or Edge. You can type your description below.
+        {t('voice_unsupported')}
       </p>
     )
   }
@@ -49,12 +51,12 @@ export default function VoiceInput({ onTranscript, disabled = false }) {
           }`}
         >
           {listening ? <Square size={15} aria-hidden="true" /> : <Mic size={15} aria-hidden="true" />}
-          {listening ? 'Stop' : 'Speak instead'}
+          {listening ? t('voice_stop') : t('voice_speak')}
         </button>
 
         {/* Language choice matters more than usual here: the recogniser needs
             to be told which language it is listening for. */}
-        <div className="flex overflow-hidden rounded-lg border border-neutral-200" role="group" aria-label="Dictation language">
+        <div className="flex overflow-hidden rounded-lg border border-neutral-200" role="group" aria-label={t('voice_language')}>
           {LANGUAGES.map((l) => (
             <button
               key={l.code}
@@ -80,7 +82,7 @@ export default function VoiceInput({ onTranscript, disabled = false }) {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-70" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-danger" />
             </span>
-            Listening…
+            {t('voice_listening')}
           </span>
         )}
       </div>
@@ -88,18 +90,18 @@ export default function VoiceInput({ onTranscript, disabled = false }) {
       {/* Announced so a screen-reader user knows dictation is running and what
           has been heard so far. */}
       <p aria-live="polite" className="sr-only">
-        {listening ? 'Listening. Speak your description now.' : ''}
+        {listening ? t('voice_listening_sr') : ''}
       </p>
 
       {interim && (
-        <p className="mt-2 text-sm italic text-neutral-400" aria-hidden="true">
+        <p className="mt-2 text-sm italic text-neutral-500" aria-hidden="true">
           {interim}
         </p>
       )}
 
       {error && (
         <p role="alert" className="mt-2 text-sm text-danger-700">
-          {error}
+          {t(error)}
         </p>
       )}
     </div>

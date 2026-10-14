@@ -3,15 +3,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../services/api'
-import Header from '../../components/Header'
-import Footer from '../../components/Footer'
-import { Button, Alert } from '../../components/UI'
+import AuthLayout from '../../components/AuthLayout'
+import { Button, Alert, FormField, BilingualHeading } from '../../components/UI'
 import Toast from '../../components/Toast'
-import { Shield, CheckCircle2 } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 export default function Register() {
-  useDocumentTitle('Create an Account')
+  useDocumentTitle('title_register')
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -79,14 +77,14 @@ export default function Register() {
     setFormErrors({})
 
     if (formData.password !== formData.password_confirm) {
-      setError('Passwords do not match')
+      setError(t('register_password_mismatch'))
       return
     }
 
     // Validate CNIC parts for CNIC id type
     if (formData.id_type === 'cnic') {
       if (!(formData.cnic_part1?.length === 5 && formData.cnic_part2?.length === 7 && formData.cnic_part3?.length === 1)) {
-        setError('Please enter a valid CNIC in the format XXXXX-XXXXXXX-X')
+        setError(t('register_cnic_invalid'))
         return
       }
     }
@@ -113,7 +111,7 @@ export default function Register() {
       const { user, tokens } = response.data
       login(user, tokens)
       
-      setToast({ message: 'Registration successful! Welcome!', type: 'success' })
+      setToast({ message: t('register_success'), type: 'success' })
       setFormErrors({})
       setTimeout(() => {
         navigate('/report')
@@ -131,11 +129,11 @@ export default function Register() {
           else parsed[k] = String(v)
         }
         setFormErrors(parsed)
-        const firstMessage = parsed.detail || Object.values(parsed)[0] || 'Registration failed. Try again.'
+        const firstMessage = parsed.detail || Object.values(parsed)[0] || t('register_failed')
         setError(firstMessage)
         setToast({ message: firstMessage, type: 'error' })
       } else {
-        const message = 'Registration failed. Try again.'
+        const message = t('register_failed')
         setError(message)
         setToast({ message, type: 'error' })
       }
@@ -144,170 +142,89 @@ export default function Register() {
     }
   }
 
-  const features = [
-    'Report hazards like potholes and open manholes in seconds.',
-    'Track the resolution status of your complaints in real-time.',
-    'Help the authorities build a safer Lahore for everyone.',
-  ]
-
-  const inputBase = 'w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-300/30'
-  const inputWithPrefix = 'flex overflow-hidden rounded-lg border border-neutral-200 bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-300/30'
-  const prefixBase = 'border-r border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-400'
-  const fieldErrorClass = 'mt-1 text-sm text-danger'
+  // Rough guide only; the backend's password validators have the final say.
+  const pw = formData.password
+  const strengthScore = [pw.length >= 8, /[A-Z]/.test(pw) && /[a-z]/.test(pw), /\d/.test(pw), /[^A-Za-z0-9]/.test(pw)].filter(Boolean).length
+  const strength = strengthScore <= 1 ? 'weak' : strengthScore <= 3 ? 'medium' : 'strong'
+  const strengthBar = { weak: 'w-1/3 bg-danger', medium: 'w-2/3 bg-warning', strong: 'w-full bg-success' }[strength]
 
   return (
-    <>
-      <Header />
-      <div className="min-h-screen bg-neutral-50 px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-6">
-        {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    <AuthLayout>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-        <div className="mx-auto flex min-h-[calc(100vh-24px)] max-w-6xl items-stretch overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-elevated lg:grid lg:grid-cols-[0.92fr_1.08fr]">
-          <aside className="relative min-h-[240px] overflow-hidden bg-gradient-to-br from-primary-700 via-primary-700 to-primary-800 px-6 py-8 text-white sm:px-8 lg:px-10 lg:py-12">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_40%),linear-gradient(rgba(4,24,15,0.18),rgba(4,24,15,0.55))]" />
-            <div className="relative z-10 flex h-full flex-col justify-between">
-              <div>
-                <div className="mb-10 flex items-center gap-2 text-sm font-semibold text-white/95">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/12"><Shield size={16} /></span>
-                  Road Safety Pakistan
-                </div>
+      <BilingualHeading titleKey="register_title" subtitleKey="register_subtitle" />
 
-                <h1 className="max-w-[14ch] font-heading text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-[2.6rem]">
-                  Lahore ki Sadkon Ko Behtar Banayein
-                </h1>
-                <p className="mt-6 text-3xl font-light text-primary-100 sm:text-4xl" style={{ fontFamily: 'serif' }}>
-                  آج ہی رجسٹر کریں
-                </p>
-              </div>
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        {error && <Alert message={error} type="error" />}
 
-              <div className="mt-12 space-y-4 text-sm text-white/90">
-                {features.map((text, i) => (
-                  <div key={i} className="flex gap-3">
-                    <CheckCircle2 size={16} className="mt-0.5 text-primary-200 flex-shrink-0" />
-                    <p>{text}</p>
-                  </div>
-                ))}
-              </div>
+        <FormField id="reg-full-name" labelKey="register_full_name">
+          <input id="reg-full-name" type="text" name="full_name" autoComplete="name" value={formData.full_name} onChange={handleChange} placeholder={t('register_name_placeholder')} className="field" required />
+        </FormField>
+
+        <FormField id="reg-email" labelKey="register_email" error={formErrors.email}>
+          <input id="reg-email" type="email" name="email" autoComplete="email" value={formData.email} onChange={handleChange} placeholder="ahmed@example.pk" className="field" dir="ltr" required />
+        </FormField>
+
+        <FormField id="reg-phone" labelKey="register_phone" error={formErrors.phone}>
+          <div className="flex" dir="ltr">
+            <span className="flex items-center rounded-s-sm border border-e-0 border-neutral-300 bg-neutral-50 px-3 text-sm text-neutral-600">+92</span>
+            <input id="reg-phone" type="tel" name="phone" autoComplete="tel-national" value={formData.phone} onChange={handleChange} placeholder="300 1234567" className="field rounded-s-none" required />
+          </div>
+        </FormField>
+
+        <FormField id="reg-id-type" labelKey="register_id_type" error={formErrors.id_type}>
+          <select id="reg-id-type" name="id_type" value={formData.id_type} onChange={handleChange} className="field">
+            <option value="cnic">{t('register_id_cnic')}</option>
+            <option value="passport">{t('register_id_passport')}</option>
+          </select>
+        </FormField>
+
+        <FormField
+          id="reg-id-number"
+          labelKey={formData.id_type === 'passport' ? 'register_passport_number' : 'register_cnic_number'}
+          error={formErrors.cnic || formErrors.passport_number}
+        >
+          {formData.id_type === 'passport' ? (
+            <input id="reg-id-number" type="text" name="passport_number" value={formData.passport_number} onChange={handleChange} placeholder="AB1234567" className="field" dir="ltr" required />
+          ) : (
+            <div className="grid grid-cols-[5fr_auto_7fr_auto_2fr] items-center gap-1.5" dir="ltr">
+              <input id="reg-id-number" ref={cnic1Ref} type="text" inputMode="numeric" name="cnic_part1" aria-label={t('register_cnic_part1')} value={formData.cnic_part1} onChange={(e) => handleCnicChange(e, 1)} onPaste={handleCnicPaste} placeholder="35202" maxLength={5} className="field tnum" required />
+              <span className="text-neutral-500" aria-hidden="true">-</span>
+              <input ref={cnic2Ref} type="text" inputMode="numeric" name="cnic_part2" aria-label={t('register_cnic_part2')} value={formData.cnic_part2} onChange={(e) => handleCnicChange(e, 2)} placeholder="1234567" maxLength={7} className="field tnum" required />
+              <span className="text-neutral-500" aria-hidden="true">-</span>
+              <input ref={cnic3Ref} type="text" inputMode="numeric" name="cnic_part3" aria-label={t('register_cnic_part3')} value={formData.cnic_part3} onChange={(e) => handleCnicChange(e, 3)} placeholder="1" maxLength={1} className="field text-center tnum" required />
             </div>
-          </aside>
+          )}
+        </FormField>
 
-          <main className="px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-            <div className="mx-auto max-w-xl">
-              <div className="mb-8 text-center lg:text-left">
-                <h2 className="font-heading text-3xl font-bold text-primary-800 sm:text-4xl">{t('register_title')}</h2>
-                <p className="mt-2 text-sm text-neutral-500">{t('register_subtitle')}</p>
-              </div>
-
-              {error && <Alert message={error} type="error" className="mb-5" />}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label htmlFor="reg-full-name">Full Name</label>
-                    <span>نام</span>
-                  </div>
-                  <input id="reg-full-name" type="text" name="full_name" value={formData.full_name} onChange={handleChange} placeholder="e.g. Ahmed Khan" className={inputBase} required />
-                </div>
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label htmlFor="reg-email">Email Address</label>
-                    <span>ای میل</span>
-                  </div>
-                  <input id="reg-email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="ahmed@example.pk" className={inputBase} required />
-                  {formErrors.email && <p className={fieldErrorClass}>{formErrors.email}</p>}
-                </div>
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label htmlFor="reg-phone">Phone Number</label>
-                    <span>فون نمبر</span>
-                  </div>
-                  <div className={inputWithPrefix}>
-                    <span className={prefixBase}>+92</span>
-                    <input id="reg-phone" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="300 1234567" className="w-full border-0 px-4 py-2 text-sm outline-none" required />
-                  </div>
-                  {formErrors.phone && <p className={fieldErrorClass}>{formErrors.phone}</p>}
-                </div>
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label htmlFor="reg-id-type">ID Type</label>
-                    <span>شناختی دستاویز</span>
-                  </div>
-                  <select id="reg-id-type" name="id_type" value={formData.id_type} onChange={handleChange} className={inputBase}>
-                    <option value="cnic">CNIC (Computerized National ID Card)</option>
-                    <option value="passport">Passport</option>
-                  </select>
-                  {formErrors.id_type && <p className={fieldErrorClass}>{formErrors.id_type}</p>}
-                </div>
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label htmlFor="reg-id-number">CNIC Number</label>
-                    <span>شناختی نمبر</span>
-                  </div>
-                  {formData.id_type === 'passport' ? (
-                    <input id="reg-id-number" type="text" name="passport_number" value={formData.passport_number} onChange={handleChange} placeholder="AB1234567" className={inputBase} required />
-                  ) : (
-                    <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] gap-2">
-                      <input id="reg-id-number" ref={cnic1Ref} type="text" inputMode="numeric" name="cnic_part1" aria-label="CNIC first five digits" value={formData.cnic_part1} onChange={(e) => handleCnicChange(e, 1)} onPaste={handleCnicPaste} placeholder="35202" maxLength={5} className={inputBase} required />
-                      <span className="self-center text-neutral-300">-</span>
-                      <input ref={cnic2Ref} type="text" inputMode="numeric" name="cnic_part2" aria-label="CNIC middle seven digits" value={formData.cnic_part2} onChange={(e) => handleCnicChange(e, 2)} placeholder="1234567" maxLength={7} className={inputBase} required />
-                      <span className="self-center text-neutral-300">-</span>
-                      <input ref={cnic3Ref} type="text" inputMode="numeric" name="cnic_part3" aria-label="CNIC last digit" value={formData.cnic_part3} onChange={(e) => handleCnicChange(e, 3)} placeholder="1" maxLength={1} className={inputBase} required />
-                    </div>
-                  )}
-                  {formErrors.cnic && <p className={fieldErrorClass}>{formErrors.cnic}</p>}
-                  {formErrors.passport_number && <p className={fieldErrorClass}>{formErrors.passport_number}</p>}
-                </div>
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label htmlFor="reg-password">Password</label>
-                    <span>پاس ورڈ</span>
-                  </div>
-                  <input id="reg-password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" className={inputBase} required />
-                  {formErrors.password && <p className={fieldErrorClass}>{formErrors.password}</p>}
-                  <div className="mt-3">
-                    <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                      <label htmlFor="reg-password-confirm">Confirm Password</label>
-                      <span>پاس ورڈ دوبارہ</span>
-                    </div>
-                    <input id="reg-password-confirm" type="password" name="password_confirm" value={formData.password_confirm} onChange={handleChange} placeholder="••••••••" className={inputBase} required />
-                    {formErrors.password_confirm && <p className={fieldErrorClass}>{formErrors.password_confirm}</p>}
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-                    <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-primary-300 via-primary-400 to-primary-600" />
-                  </div>
-                  <p className="mt-1 text-[11px] text-neutral-400">Strength: Medium. Use symbols for better security.</p>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="mt-2 w-full !rounded-lg !bg-accent !py-3 text-base font-bold uppercase tracking-wide hover:!bg-accent-dark"
-                  loading={loading}
-                >
-                  {loading ? t('register_submit_loading') : t('register_submit')}
-                </Button>
-              </form>
-
-              <div className="mt-5 text-center text-sm text-neutral-500">
-                {t('register_already_have')}{' '}
-                <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-700">
-                  {t('nav_login')}
-                </Link>
-              </div>
-
-              <div className="mt-8 flex items-center gap-3 text-[10px] uppercase tracking-[0.28em] text-neutral-300">
-                <span className="h-px flex-1 bg-neutral-100" />
-                Verified by Punjab IT Board
-                <span className="h-px flex-1 bg-neutral-100" />
-              </div>
-            </div>
-          </main>
+        <div className="space-y-5">
+          <FormField id="reg-password" labelKey="register_password" error={formErrors.password}>
+            <input id="reg-password" type="password" name="password" autoComplete="new-password" value={formData.password} onChange={handleChange} className="field" required />
+          </FormField>
+          <FormField id="reg-password-confirm" labelKey="register_confirm_password" error={formErrors.password_confirm}>
+            <input id="reg-password-confirm" type="password" name="password_confirm" autoComplete="new-password" value={formData.password_confirm} onChange={handleChange} className="field" required />
+          </FormField>
         </div>
-      </div>
-      <Footer />
-    </>
+        {pw && (
+          <div className="-mt-2">
+            <div className="h-1 bg-neutral-200">
+              <div className={`h-full transition-all ${strengthBar}`} />
+            </div>
+            <p className="mt-1.5 text-[13px] text-neutral-600" aria-live="polite">{t(`register_strength_${strength}`)}</p>
+          </div>
+        )}
+
+        <Button type="submit" size="lg" className="w-full" loading={loading}>
+          {loading ? t('register_submit_loading') : t('register_submit')}
+        </Button>
+      </form>
+
+      <p className="mt-6 border-t border-neutral-200 pt-6 text-sm text-neutral-600">
+        {t('register_already_have')}{' '}
+        <Link to="/login" className="font-semibold text-primary-600 hover:underline">
+          {t('nav_login')}
+        </Link>
+      </p>
+    </AuthLayout>
   )
 }

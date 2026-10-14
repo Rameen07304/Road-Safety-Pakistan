@@ -3,6 +3,7 @@ Full end-to-end smoke test covering all 8 features.
 Run with:  python manage.py smoke_test
 """
 import sys
+from types import SimpleNamespace
 from PIL import Image
 import numpy as np
 
@@ -164,7 +165,8 @@ def test_1_normal_complaint():
     check("complaint not flagged", data["flagged"] is False)
 
     # detail serializer
-    dser = ComplaintDetailSerializer(c)
+    # Private fields (flag_reason, admin notes) are only shown to the owner/admin.
+    dser = ComplaintDetailSerializer(c, context={"request": SimpleNamespace(user=c.citizen)})
     dd = dser.data
     check("detail serializer has predicted_resolution_days", "predicted_resolution_days" in dd)
     check("detail serializer has flagged", "flagged" in dd)

@@ -1,17 +1,16 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../services/api'
-import Header from '../../components/Header'
-import Footer from '../../components/Footer'
-import { Button, Alert } from '../../components/UI'
+import AuthLayout from '../../components/AuthLayout'
+import { Button, Alert, FormField, BilingualHeading } from '../../components/UI'
 import Toast from '../../components/Toast'
-import { Shield, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 export default function Login() {
-  useDocumentTitle('Login')
+  useDocumentTitle('title_login')
   const [loginMethod, setLoginMethod] = useState('email')
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -20,6 +19,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
   const { t } = useLanguage()
 
@@ -36,13 +36,13 @@ export default function Login() {
 
       const { user, tokens, role } = response.data
       login(user, tokens)
-      
-      setToast({ message: 'Login successful!', type: 'success' })
+
+      setToast({ message: t('login_success'), type: 'success' })
       setTimeout(() => {
-        navigate(role === 'admin' ? '/admin/dashboard' : '/')
+        navigate(role === 'admin' ? '/admin/dashboard' : location.state?.from || '/')
       }, 1500)
     } catch (err) {
-      const message = err.response?.data?.detail || 'Login failed. Check your credentials.'
+      const message = err.response?.data?.detail || t('login_failed')
       setError(message)
       setToast({ message, type: 'error' })
     } finally {
@@ -50,156 +50,92 @@ export default function Login() {
     }
   }
 
+  const tab = (method, key) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={loginMethod === method}
+      onClick={() => setLoginMethod(method)}
+      className={`h-10 flex-1 border-b-2 text-sm font-semibold transition-colors ${
+        loginMethod === method ? 'border-primary-500 text-neutral-900' : 'border-transparent text-neutral-500 hover:text-neutral-800'
+      }`}
+    >
+      {t(key)}
+    </button>
+  )
+
   return (
-    <>
-      <Header />
-      <div className="min-h-[calc(100vh-64px)] bg-neutral-50 px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-6">
-        {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+    <AuthLayout>
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-        <div className="mx-auto flex min-h-[calc(100vh-24px)] max-w-6xl flex-col overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-elevated lg:grid lg:grid-cols-[1.05fr_0.95fr]">
-          <aside className="relative min-h-[380px] overflow-hidden bg-[linear-gradient(rgba(15,40,29,0.35),rgba(15,40,29,0.75)),url('https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&w=1400&q=80')] bg-cover bg-center px-6 py-7 text-white sm:px-8 lg:px-10 lg:py-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,213,185,0.18),transparent_35%)]" />
-            <div className="relative z-10 flex h-full flex-col justify-between">
-              <div>
-                <div className="mb-10 flex items-center gap-2 text-sm font-semibold text-white/95">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/12"><Shield size={16} /></span>
-                  OFFICIAL CITIZEN PORTAL
-                </div>
+      <BilingualHeading titleKey="login_welcome_back" subtitleKey="login_subtitle" />
 
-                <h1 className="max-w-[12ch] font-heading text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl">
-                  Make Our Roads Safer, Together.
-                </h1>
-                <p className="mt-4 max-w-md text-sm leading-6 text-white/80">
-                  Join thousands of citizens in Lahore reporting hazards, tracking resolutions, and ensuring safer commutes for everyone.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
-                  <div className="text-2xl font-heading font-bold">12k+</div>
-                  <div className="mt-1 text-sm text-white/75">Hazards Resolved</div>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
-                  <div className="text-2xl font-heading font-bold">24/7</div>
-                  <div className="mt-1 text-sm text-white/75">Active Monitoring</div>
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          <main className="bg-neutral-50 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-            <div className="mx-auto max-w-md">
-              <div className="mb-8 text-center lg:text-left">
-                <p className="text-[28px] font-serif text-primary-700">واپس آئیں</p>
-                <h2 className="mt-1 font-heading text-4xl font-bold text-primary-800">{t('login_welcome_back')}</h2>
-                <p className="mt-2 text-sm text-neutral-500">{t('login_subtitle')}</p>
-              </div>
-
-              {error && <Alert message={error} type="error" className="mb-5" />}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 rounded-lg bg-neutral-100 p-1 text-sm font-semibold text-neutral-500">
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod('email')}
-                    className={`rounded-md py-2 transition ${loginMethod === 'email' ? 'bg-white text-primary-800 shadow-subtle' : ''}`}
-                  >
-                    {t('login_email_tab')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod('phone')}
-                    className={`rounded-md py-2 transition ${loginMethod === 'phone' ? 'bg-white text-primary-800 shadow-subtle' : ''}`}
-                  >
-                    {t('login_phone_tab')}
-                  </button>
-                </div>
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label htmlFor="login-identifier">{loginMethod === 'phone' ? 'Phone Number' : 'Email Address'}</label>
-                    <span>{loginMethod === 'phone' ? 'فون نمبر' : 'ای میل کا پتہ'}</span>
-                  </div>
-                  <div className="flex overflow-hidden rounded-lg border border-neutral-200 bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-300/30">
-                    <span className="border-r border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-400">
-                      {loginMethod === 'phone' ? '+92' : '@'}
-                    </span>
-                    <input
-                      id="login-identifier"
-                      type={loginMethod === 'phone' ? 'tel' : 'email'}
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder={loginMethod === 'phone' ? '300 1234567' : 'name@example.com'}
-                      className="w-full border-0 px-4 py-2 text-sm text-neutral-900 outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-primary-700">
-                    <label htmlFor="login-password">Password</label>
-                    <span>پاس ورڈ</span>
-                  </div>
-                  <div className="flex overflow-hidden rounded-lg border border-neutral-200 bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-300/30">
-                    <span className="border-r border-neutral-200 bg-neutral-50 px-3 py-2 text-neutral-400">
-                      <Lock size={14} />
-                    </span>
-                    <input
-                      id="login-password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full border-0 px-4 py-2 text-sm text-neutral-900 outline-none"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(v => !v)}
-                      className="border-l border-neutral-200 bg-neutral-50 px-3 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-600"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <label className="flex items-center gap-2 text-neutral-500">
-                    <input type="checkbox" className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-300" />
-                    {t('login_remember_me')}
-                  </label>
-                  <Link to="/forgot-password" className="font-semibold text-primary-600 hover:text-primary-700">
-                    {t('login_forgot_password')}
-                  </Link>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full !rounded-lg !bg-primary-800 !py-3 text-base font-bold hover:!bg-primary-900"
-                  loading={loading}
-                >
-                  {loading ? t('login_button_loading') : t('login_button')}
-                  <ArrowRight size={16} />
-                </Button>
-              </form>
-
-              <div className="mt-6 text-center text-sm text-neutral-500">
-                {t('login_new_here')}{' '}
-                <Link to="/register" className="font-semibold text-primary-600 hover:text-primary-700">
-                  {t('login_create_account')}
-                </Link>
-              </div>
-
-              <div className="mt-6 border-t border-neutral-100 pt-5 text-center text-[10px] uppercase tracking-[0.24em] text-neutral-400">
-                Government Official? Admin Portal +
-              </div>
-            </div>
-          </main>
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <div className="flex border-b border-neutral-200" role="tablist">
+          {tab('email', 'login_email_tab')}
+          {tab('phone', 'login_phone_tab')}
         </div>
-      </div>
-      <Footer />
-    </>
+
+        {error && <Alert message={error} type="error" />}
+
+        <FormField id="login-identifier" labelKey={loginMethod === 'phone' ? 'login_phone_label' : 'login_email_label'}>
+          <div className="flex" dir="ltr">
+            {loginMethod === 'phone' && (
+              <span className="flex items-center rounded-s-sm border border-e-0 border-neutral-300 bg-neutral-50 px-3 text-sm text-neutral-600">+92</span>
+            )}
+            <input
+              id="login-identifier"
+              type={loginMethod === 'phone' ? 'tel' : 'email'}
+              autoComplete={loginMethod === 'phone' ? 'tel' : 'email'}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder={loginMethod === 'phone' ? '300 1234567' : 'name@example.com'}
+              className={`field ${loginMethod === 'phone' ? 'rounded-s-none' : ''}`}
+              required
+            />
+          </div>
+        </FormField>
+
+        <FormField id="login-password" labelKey="login_password_label">
+          <div className="relative">
+            <input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="field pe-11"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute inset-y-0 end-0 flex w-10 items-center justify-center text-neutral-500 hover:text-neutral-800"
+              aria-label={showPassword ? t('login_hide_password') : t('login_show_password')}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+          <div className="mt-2 text-end">
+            <Link to="/forgot-password" className="-my-1.5 inline-block py-1.5 text-sm font-semibold text-primary-600 hover:underline">
+              {t('login_forgot_password')}
+            </Link>
+          </div>
+        </FormField>
+
+        <Button type="submit" size="lg" className="w-full" loading={loading}>
+          {loading ? t('login_button_loading') : t('login_button')}
+          {!loading && <ArrowRight size={16} aria-hidden="true" className="rtl:-scale-x-100" />}
+        </Button>
+      </form>
+
+      <p className="mt-6 border-t border-neutral-200 pt-6 text-sm text-neutral-600">
+        {t('login_new_here')}{' '}
+        <Link to="/register" className="font-semibold text-primary-600 hover:underline">
+          {t('login_create_account')}
+        </Link>
+      </p>
+      <p className="mt-2 text-[13px] text-neutral-500">{t('login_admin_note')}</p>
+    </AuthLayout>
   )
 }

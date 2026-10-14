@@ -79,3 +79,8 @@ desktop.ini
 /test*.png
 /citizen-*.png
 /admin-*.png
+# Local tooling (editor launch configs, design-review notes and screenshots)
+.claude/
+.impeccable/
+**/.impeccable/
+PRODUCT.md

@@ -7,6 +7,7 @@ import numpy as np
 import requests
 
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -25,6 +26,7 @@ from .serializers import (
     ComplaintListSerializer,
     ComplaintStatusUpdateSerializer,
     ComplaintSubmitSerializer,
+    can_view_private,
 )
 from accounts.permissions import IsAdminUser
 from detection.detector import analyze_image
@@ -57,12 +59,12 @@ def _perceptual_image_hash(image_url):
     Returns a 16-char hex string, or None on failure.
     """
     try:
-        if image_url.startswith(("http://", "https://")):
-            resp = requests.get(image_url, timeout=10)
-            resp.raise_for_status()
-            img = Image.open(io.BytesIO(resp.content))
-        else:
-            img = Image.open(image_url)
+        # URLs only: opening an arbitrary string as a path read local files.
+        if not image_url.startswith(("http://", "https://")):
+            return None
+        resp = requests.get(image_url, timeout=10)
+        resp.raise_for_status()
+        img = Image.open(io.BytesIO(resp.content))
         img = img.convert("L").resize((8, 8), Image.LANCZOS)
         pixels = np.array(img, dtype=np.float64)
         avg = pixels.mean()
@@ -318,11 +320,13 @@ class UploadImageView(APIView):
 
             # --- Image quality gate ---
             image_for_quality = Image.open(file)
-            file.seek(0)
             quality_error = _check_image_quality(image_for_quality)
             if quality_error:
                 return Response({'detail': quality_error}, status=status.HTTP_400_BAD_REQUEST)
 
+            # PIL reads pixels lazily, so the quality check above consumes the
+            # stream; rewind or Cloudinary receives an empty file.
+            file.seek(0)
             res = cloudinary.uploader.upload(file, folder='complaints')
             url = res.get('secure_url') or res.get('url')
             if not url:
@@ -430,6 +434,14 @@ class ComplaintMapView(APIView):
         return Response({"complaints": data, "results": data}, status=status.HTTP_200_OK)
 
 
+def _get_visible_complaint(request, complaint_id):
+    """Flagged complaints are hidden from the public map; keep them hidden here too."""
+    complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+    if complaint.flagged and not can_view_private(request, complaint):
+        raise Http404
+    return complaint
+
+
 class ComplaintTrackView(APIView):
     permission_classes = [AllowAny]
 
@@ -445,12 +457,19 @@ class ComplaintTrackView(APIView):
                 phone = query
 
         if complaint_id:
-            complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+            complaint = _get_visible_complaint(request, complaint_id)
             serializer = ComplaintDetailSerializer(complaint, context={"request": request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         if phone:
-            complaints = Complaint.objects.filter(citizen__phone=phone)
+            # A phone number is not a secret, so an anonymous lookup exposed
+            # where and when a named person had been. Only the owner may use it.
+            if not request.user.is_authenticated or request.user.phone != phone:
+                return Response(
+                    {"detail": "Log in to look up complaints by phone number."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            complaints = Complaint.objects.filter(citizen=request.user)
             serializer = ComplaintDetailSerializer(complaints, many=True, context={"request": request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -515,7 +534,7 @@ class ComplaintDetailView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, complaint_id):
-        complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+        complaint = _get_visible_complaint(request, complaint_id)
         serializer = ComplaintDetailSerializer(complaint, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 

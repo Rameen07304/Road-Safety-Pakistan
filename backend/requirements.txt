@@ -1,15 +1,20 @@
 asgiref==3.11.1
-Django==4.2.7
+Django==5.2.18
 sqlparse==0.5.5
 tzdata==2026.2
-djangorestframework==3.14.0
-djangorestframework-simplejwt>=5.3.1
+djangorestframework==3.18.3
+djangorestframework-simplejwt==5.5.1
 python-dotenv==1.0.0
-django-cors-headers==4.3.1
+django-cors-headers==4.9.0
 cloudinary==1.36.0
-django-cloudinary-storage==0.3.0
-django-filter==23.5
-ultralytics==8.0.196
+django-filter==26.2
 Pillow>=10.2.0
 opencv-python-headless>=4.9.0
 reportlab>=4.0.0
+# Production serving
+gunicorn==23.0.0
+whitenoise==6.9.0
+dj-database-url==3.0.1
+psycopg[binary]==3.2.9
+# Detection runs on the Hugging Face Space. Install requirements-ml.txt only
+# to run the YOLO model locally (needs ml_models/best.pt and ~2 GB of torch).

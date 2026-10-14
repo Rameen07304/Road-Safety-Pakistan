@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api, analyticsService, complaintService } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
-import { Card, Badge, Button, Alert } from '../../components/UI'
-import { Loader2, FileText, FileDown, Clock, CheckCircle2, AlertTriangle, Flag, Building2 } from 'lucide-react'
+import { Button, Alert, PageTitle, StatStrip, UrgencyMark } from '../../components/UI'
+import { statusClasses } from '../../utils/urgencyHelpers'
+import { Loader2, FileDown, Building2 } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
+import { useLanguage } from '../../context/LanguageContext'
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
 export default function Dashboard() {
-  useDocumentTitle('Admin Dashboard')
+  useDocumentTitle('title_admin_dashboard')
+  const { t, tv } = useLanguage()
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('pending')
@@ -76,7 +79,7 @@ export default function Dashboard() {
       window.URL.revokeObjectURL(url)
     } catch (err) {
       console.error('Failed to export PDF report:', err)
-      setExportError('Failed to generate the report. Please try again.')
+      setExportError('admin_export_failed')
     } finally {
       setExportingReport(false)
     }
@@ -88,181 +91,132 @@ export default function Dashboard() {
     return true
   })
 
+  const filters = [
+    { id: 'all', label: t('common_all') },
+    { id: 'pending', label: t('status_pending') },
+    { id: 'critical', label: t('urgency_critical') },
+  ]
+
   return (
     <>
       <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Exporting a report is an occasional action, so it reads as a
-            toolbar subordinate to the page title rather than a card that
-            outweighs it. */}
-        <div className="mb-8 border-b border-neutral-200 pb-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-heading text-3xl font-bold tracking-[-0.01em] text-neutral-900">Admin Dashboard</h1>
-              <p className="mt-1 text-sm text-neutral-500">Triage incoming hazard reports across Lahore.</p>
-            </div>
+      <PageTitle titleKey="admin_title" subtitle={t('admin_subtitle')} />
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div>
-                <label htmlFor="report-start-date" className="mb-1 block text-xs font-semibold text-neutral-500">Start Date</label>
-                <input
-                  id="report-start-date"
-                  type="date"
-                  value={reportStartDate}
-                  onChange={(e) => setReportStartDate(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm transition focus:border-primary-300 focus:ring-2 focus:ring-primary-300 sm:w-auto"
-                />
-              </div>
-              <div>
-                <label htmlFor="report-end-date" className="mb-1 block text-xs font-semibold text-neutral-500">End Date</label>
-                <input
-                  id="report-end-date"
-                  type="date"
-                  value={reportEndDate}
-                  onChange={(e) => setReportEndDate(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm transition focus:border-primary-300 focus:ring-2 focus:ring-primary-300 sm:w-auto"
-                />
-              </div>
-              <Button variant="secondary" loading={exportingReport} onClick={handleExportReport}>
-                <FileDown size={16} aria-hidden="true" />
-                {exportingReport ? 'Generating report...' : 'Export PDF Report'}
-              </Button>
-            </div>
+      <main className="mx-auto max-w-page px-4 py-8 sm:px-6 lg:px-8">
+        <StatStrip
+          className="mb-8"
+          items={[
+            { label: t('admin_total'), value: stats.total },
+            { label: t('status_pending'), value: stats.pending },
+            { label: t('status_resolved'), value: stats.resolved },
+            { label: t('urgency_critical'), value: stats.critical },
+            {
+              label: t('admin_flagged_review'),
+              value: flaggedCount,
+              tone: 'text-accent-dark',
+              onClick: () => navigate('/admin/flagged'),
+              ariaLabel: t('admin_flagged_aria', { n: flaggedCount }),
+            },
+          ]}
+        />
+
+        {/* Toolbar: the queue filter on one side, the occasional PDF export on the other. */}
+        <div className="flex flex-col gap-4 border-b border-neutral-300 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex" role="tablist">
+            {filters.map(f => (
+              <button
+                key={f.id}
+                type="button"
+                role="tab"
+                aria-selected={filter === f.id}
+                onClick={() => setFilter(f.id)}
+                className={`-mb-px h-11 border-b-2 px-4 text-sm font-semibold transition-colors ${
+                  filter === f.id ? 'border-primary-500 text-neutral-900' : 'border-transparent text-neutral-500 hover:text-neutral-800'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
-          {exportError && <Alert message={exportError} type="error" className="mt-4" />}
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <Card variant="flat" className="text-center">
-            <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <FileText size={18} className="text-primary-500" />
+          <div className="flex flex-wrap items-end gap-2 pb-3">
+            <div>
+              <label htmlFor="report-start-date" className="label mb-1 block">{t('admin_start_date')}</label>
+              <input id="report-start-date" type="date" value={reportStartDate} onChange={(e) => setReportStartDate(e.target.value)} className="field h-9 !min-h-9 w-auto text-sm" />
             </div>
-            <div className="text-3xl font-heading font-bold text-neutral-900 mb-1">{stats.total}</div>
-            <div className="text-sm text-neutral-500">Total Complaints</div>
-          </Card>
-          <Card variant="flat" className="text-center">
-            <div className="w-10 h-10 bg-warning-50 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <Clock size={18} className="text-urgency-medium" />
+            <div>
+              <label htmlFor="report-end-date" className="label mb-1 block">{t('admin_end_date')}</label>
+              <input id="report-end-date" type="date" value={reportEndDate} onChange={(e) => setReportEndDate(e.target.value)} className="field h-9 !min-h-9 w-auto text-sm" />
             </div>
-            <div className="text-3xl font-heading font-bold text-urgency-medium mb-1">{stats.pending}</div>
-            <div className="text-sm text-neutral-500">Pending</div>
-          </Card>
-          <Card variant="flat" className="text-center">
-            <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <CheckCircle2 size={18} className="text-success" />
-            </div>
-            <div className="text-3xl font-heading font-bold text-success mb-1">{stats.resolved}</div>
-            <div className="text-sm text-neutral-500">Resolved</div>
-          </Card>
-          <Card variant="flat" className="text-center">
-            <div className="w-10 h-10 bg-danger-50 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <AlertTriangle size={18} className="text-urgency-critical" />
-            </div>
-            <div className="text-3xl font-heading font-bold text-danger mb-1">{stats.critical}</div>
-            <div className="text-sm text-neutral-500">Critical</div>
-          </Card>
-          <Card
-            variant="flat"
-            role="link"
-            tabIndex={0}
-            aria-label={`Flagged for review: ${flaggedCount}. Open the flagged queue.`}
-            className="text-center cursor-pointer transition hover:ring-2 hover:ring-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            onClick={() => navigate('/admin/flagged')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                navigate('/admin/flagged')
-              }
-            }}
-          >
-            <div className="w-10 h-10 bg-accent-light rounded-lg flex items-center justify-center mx-auto mb-3">
-              <Flag size={18} className="text-accent-dark" />
-            </div>
-            <div className="text-3xl font-heading font-bold text-accent-dark mb-1">{flaggedCount}</div>
-            <div className="text-sm text-neutral-500">Flagged for Review</div>
-          </Card>
+            <Button variant="secondary" size="sm" className="!h-9" loading={exportingReport} onClick={handleExportReport}>
+              {!exportingReport && <FileDown size={15} aria-hidden="true" />}
+              {exportingReport ? t('admin_generating') : t('admin_export')}
+            </Button>
+          </div>
         </div>
+        {exportError && <Alert message={t(exportError)} type="error" className="mt-4" />}
 
-        {/* Filter */}
-        <div className="flex gap-2 mb-6">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'pending', label: 'Pending' },
-            { id: 'critical', label: 'Critical' },
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                filter === f.id ? 'bg-primary-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Complaints Table */}
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 size={36} className="text-primary-500 animate-spin" />
+          <div className="flex h-60 items-center justify-center" role="status">
+            <Loader2 size={28} className="animate-spin text-neutral-500" aria-hidden="true" />
           </div>
         ) : (
-          <Card className="overflow-x-auto p-0">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto border-x border-b border-neutral-200 bg-white">
+            <table className="data-table">
               <thead>
-                <tr className="border-b border-neutral-100 bg-neutral-50">
-                  <th className="text-left p-4 font-heading font-bold text-neutral-700">ID</th>
-                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Summary</th>
-                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Department</th>
-                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Urgency</th>
-                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Status</th>
-                  <th className="text-left p-4 font-heading font-bold text-neutral-700">Action</th>
+                <tr>
+                  <th>{t('th_id')}</th>
+                  <th className="hidden lg:table-cell">{t('th_summary')}</th>
+                  <th className="hidden lg:table-cell">{t('th_department')}</th>
+                  <th>{t('th_urgency')}</th>
+                  <th>{t('th_status')}</th>
+                  <th className="hidden text-end md:table-cell"><span className="sr-only">{t('th_action')}</span></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredComplaints.map(complaint => (
-                  <tr key={complaint.complaint_id} className="border-b border-neutral-100 hover:bg-neutral-50 transition">
-                    <td className="p-4 font-semibold text-neutral-900">{complaint.complaint_id}</td>
-                    <td className="p-4 text-sm text-neutral-600 max-w-xs truncate" title={complaint.summary}>
+                  <tr key={complaint.complaint_id}>
+                    <td className="whitespace-nowrap font-semibold tnum" dir="ltr">
+                      <Link to={`/admin/complaint/${complaint.complaint_id}`} className="-my-1.5 inline-block py-1.5 hover:text-primary-600 hover:underline">
+                        {complaint.complaint_id}
+                      </Link>
+                    </td>
+                    <td className="hidden max-w-xs truncate text-neutral-700 lg:table-cell" title={complaint.summary}>
                       {complaint.summary || '—'}
                     </td>
-                    <td className="p-4">
+                    <td className="hidden whitespace-nowrap lg:table-cell">
                       {complaint.assigned_department ? (
-                        <span className="inline-flex items-center gap-1 rounded-lg bg-info-light px-2 py-1 text-xs font-semibold text-info">
-                          <Building2 size={11} /> {complaint.assigned_department}
+                        <span className="inline-flex items-center gap-1.5 text-neutral-700">
+                          <Building2 size={13} className="text-neutral-500" aria-hidden="true" /> {tv('dept', complaint.assigned_department)}
                         </span>
                       ) : (
-                        <span className="text-xs text-neutral-400">Unassigned</span>
+                        <span className="text-neutral-500">{t('admin_unassigned')}</span>
                       )}
                     </td>
-                    <td className="p-4">
-                      <Badge variant={complaint.urgency_level?.toLowerCase()}>
-                        {complaint.urgency_level} ({complaint.urgency_score})
-                      </Badge>
+                    <td className="whitespace-nowrap">
+                      <span className="inline-flex items-center gap-2">
+                        <UrgencyMark level={complaint.urgency_level} size={11} />
+                        {tv('urgency', complaint.urgency_level)}
+                        <span className="text-neutral-500 tnum">{complaint.urgency_score}</span>
+                      </span>
                     </td>
-                    <td className="p-4">
-                      <Badge variant={complaint.status === 'resolved' ? 'success' : 'warning'}>
-                        {complaint.status}
-                      </Badge>
+                    <td className="whitespace-nowrap">
+                      <span className={`rounded-sm px-2 py-0.5 text-xs font-semibold ${statusClasses[complaint.status] || 'bg-neutral-100 text-neutral-700'}`}>
+                        {tv('status', complaint.status)}
+                      </span>
                     </td>
-                    <td className="p-4">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => navigate(`/admin/complaint/${complaint.complaint_id}`)}
-                      >
-                        View
+                    <td className="hidden text-end md:table-cell">
+                      <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/complaint/${complaint.complaint_id}`)}>
+                        {t('common_view')}
                       </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </Card>
+          </div>
         )}
-      </div>
+      </main>
       <Footer />
     </>
   )

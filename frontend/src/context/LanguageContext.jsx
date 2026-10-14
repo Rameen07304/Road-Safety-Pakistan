@@ -5,7 +5,7 @@ import {
   useEffect,
   useCallback,
 } from 'react'
-import { translate } from '../translations/translations'
+import { translate, translateValue } from '../translations/translations'
 
 /* eslint-disable react-refresh/only-export-components */
 
@@ -37,7 +37,15 @@ export function LanguageProvider({ children }) {
     setLanguage(language === 'en' ? 'ur' : 'en')
   }, [language, setLanguage])
 
-  const t = useCallback((key) => translate(language, key), [language])
+  const t = useCallback((key, vars) => translate(language, key, vars), [language])
+  // Labels for values that come from the server: status, urgency, ward, ...
+  const tv = useCallback((prefix, value) => translateValue(language, prefix, value), [language])
+  // Same, for a list of values (e.g. detected hazard classes), joined with the
+  // script's own comma.
+  const tvList = useCallback(
+    (prefix, values) => (values || []).map((v) => translateValue(language, prefix, v)).join(language === 'ur' ? '، ' : ', '),
+    [language],
+  )
 
   return (
     <LanguageContext.Provider value={{
@@ -45,7 +53,11 @@ export function LanguageProvider({ children }) {
       setLanguage,
       toggleLanguage,
       isUrdu: language === 'ur',
+      // Locale for Date#toLocale*String, so dates follow the UI language.
+      locale: language === 'ur' ? 'ur-PK' : 'en-PK',
       t,
+      tv,
+      tvList,
     }}>
       {children}
     </LanguageContext.Provider>
@@ -59,5 +71,3 @@ export const useLanguage = () => {
   }
   return context
 }
-
-export default LanguageContext

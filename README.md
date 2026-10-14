@@ -4,7 +4,7 @@
 > to report road hazards and hold authorities accountable.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
-![Django](https://img.shields.io/badge/Django-4.2.7-green)
+![Django](https://img.shields.io/badge/Django-5.2-green)
 ![React](https://img.shields.io/badge/React-18-61DAFB)
 ![YOLOv8](https://img.shields.io/badge/YOLOv8s-mAP50%3A0.808-orange)
 
@@ -49,7 +49,7 @@
 | Layer      | Technology                        |
 |------------|-----------------------------------|
 | Frontend   | React 18 + Vite + Tailwind CSS    |
-| Backend    | Django 4.2 + Django REST Framework|
+| Backend    | Django 5.2 LTS + Django REST Framework|
 | AI Model   | YOLOv8s (trained on 5,364 images) |
 | Auth       | JWT via SimpleJWT                 |
 | Images     | Cloudinary (free tier)            |
@@ -139,7 +139,8 @@ python -m venv .venv
 # macOS / Linux
 source .venv/bin/activate
 
-# Install dependencies (this pulls torch + ultralytics, ~1.2 GB)
+# Install dependencies. Detection runs on the hosted Hugging Face model; add
+# torch + ultralytics (~1.2 GB) with requirements-ml.txt only to run it locally.
 pip install -r requirements.txt
 ```
 
@@ -298,7 +299,7 @@ drift between the config and hand-copied hex strings.
 - For text on a light tinted surface use the **`700`** step, not `DEFAULT`.
   Every `700`-on-`50` pair clears WCAG AA; `warning.DEFAULT` on `warning.50`
   is only 3.07:1 and fails.
-- Fonts: `font-heading` (Plus Jakarta Sans) for headings, `font-sans` (Inter)
+- Fonts: `font-heading` (Outfit) for headings, `font-sans` (Public Sans)
   for body.
 
 ---
@@ -370,15 +371,9 @@ Base URL: `http://localhost:8000`
 | GET    | `track/?complaint_id=…`    | Public | Track by complaint ID             |
 | GET    | `my/`                      | User   | Complaints filed by current user  |
 | GET    | `my-dashboard/`            | User   | Citizen dashboard summary         |
-| GET    | `<complaint_id>/`          | Public | Complaint detail                  |
+| GET    | `<complaint_id>/`          | Public | Complaint detail (reporter name and admin notes only for owner/admin) |
 | POST   | `<complaint_id>/upvote/`   | User   | Upvote (one per user)             |
 
-**Detection** — `/api/detect/`
-
-| Method | Path        | Auth   | Description                      |
-|--------|-------------|--------|----------------------------------|
-| POST   | `analyze/`  | User   | Analyze an image                 |
-| POST   | `detect/`   | Public | Public detection demo endpoint   |
 
 **Analytics** — `/api/analytics/`
 

@@ -1,16 +1,17 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import L from 'leaflet'
 import 'leaflet.heat'
 import { api } from '../../services/api'
 import Header from '../../components/Header'
-import { Badge, Button } from '../../components/UI'
+import { Badge, Button, UrgencyMark } from '../../components/UI'
 import UpvoteButton from '../../components/UpvoteButton'
 import { useLanguage } from '../../context/LanguageContext'
-import { urgencyColors } from '../../utils/urgencyHelpers'
-import { Search, X, Users, TrendingUp, TrendingDown, Minus, BarChart3, Loader2 } from 'lucide-react'
+import { translate } from '../../translations/translations'
+import { urgencyColors, urgencyMarkSvg, statusClasses } from '../../utils/urgencyHelpers'
+import { Search, X, Users, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -49,11 +50,6 @@ const TYPE_LABELS = {
   encroachment: ['encroachment', 'obstruction', 'garbage', 'trash'],
 }
 
-const PRIORITY_COLORS = {
-  critical: 'bg-danger text-white',
-  in_progress: 'bg-urgency-medium text-white',
-  pending: 'bg-success text-white',
-}
 
 const normalizeValue = (value) => String(value || '').toLowerCase().replace(/[_-]+/g, ' ').trim()
 
@@ -93,15 +89,23 @@ const getPriorityKey = (complaint) => {
   return 'pending'
 }
 
-const getStatusClass = (complaint) => {
-  const key = getPriorityKey(complaint)
-  return PRIORITY_COLORS[key] || PRIORITY_COLORS.pending
-}
 
 const ProgressionIcon = ({ progression }) => {
   if (progression === 'Worsening') return <TrendingUp size={11} />
   if (progression === 'Improving') return <TrendingDown size={11} />
   return <Minus size={11} />
+}
+
+// Pans to the complaint named in /map?focus=<id> once it is on the map.
+function FocusOnComplaint({ complaint }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!complaint) return
+    const lat = Number(complaint.latitude ?? complaint.lat)
+    const lng = Number(complaint.longitude ?? complaint.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) map.setView([lat, lng], 16)
+  }, [map, complaint])
+  return null
 }
 
 function MapClickHandler({ onMapClick }) {
@@ -162,6 +166,7 @@ function HeatmapLayer({ complaints }) {
 }
 
 function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange, viewMode }) {
+  const { t, tv } = useLanguage()
   return (
     <>
       <TileLayer
@@ -175,13 +180,13 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
       <MarkerClusterGroup chunkedLoading iconCreateFunction={createClusterIcon}>
         {complaints.map(complaint => {
           const urgencyLevel = complaint.urgency_level?.toLowerCase() || 'low'
-          const color = urgencyColors[urgencyLevel] || urgencyColors.low
+          // Pins use the legend shape for their urgency, not a generic dot.
           const icon = L.divIcon({
             className: '',
-            html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:${color};border:3px solid white;box-shadow:0 2px 8px rgba(28,27,24,0.18)"></span>`,
-            iconSize: [18, 18],
-            iconAnchor: [9, 9],
-            popupAnchor: [0, -9],
+            html: urgencyMarkSvg(urgencyLevel, 22),
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            popupAnchor: [0, -11],
           })
 
           return (
@@ -194,10 +199,10 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
             >
               <Popup>
                 <div className="w-60">
-                  <h3 className="font-heading font-bold text-neutral-900 mb-1">{complaint.complaint_id}</h3>
+                  <h3 className="mb-1.5 text-sm font-semibold text-neutral-900 tnum">{complaint.complaint_id}</h3>
                   <div className="mb-2 flex items-center gap-2">
                     <Badge variant={urgencyLevel || 'default'}>
-                      {complaint.urgency_level} ({complaint.urgency_score}/100)
+                      {tv('urgency', complaint.urgency_level)} ({complaint.urgency_score}/100)
                     </Badge>
                     <UpvoteButton
                       complaintId={complaint.complaint_id}
@@ -208,27 +213,27 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
                     />
                   </div>
                   {complaint.linked_count > 1 && (
-                    <div className="mb-2 rounded-lg bg-accent-light border border-accent/20 px-2.5 py-1.5 text-xs font-semibold text-neutral-700">
+                    <div className="mb-2 flex flex-wrap items-center gap-2 border-y border-neutral-200 py-1.5 text-xs font-medium text-neutral-700">
                       <span className="inline-flex items-center gap-1">
-                        <Users size={12} className="text-accent-dark" />
-                        {complaint.linked_count} reports linked nearby
+                        <Users size={12} aria-hidden="true" />
+                        {t('map_linked_nearby', { n: complaint.linked_count })}
                       </span>
                       {complaint.cluster_progression && (
-                        <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        <span className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 ${
                           complaint.cluster_progression === 'Worsening'
-                            ? 'bg-danger-100 text-danger'
+                            ? 'bg-danger-50 text-danger-700'
                             : complaint.cluster_progression === 'Improving'
-                              ? 'bg-primary-50 text-primary-600'
-                              : 'bg-neutral-100 text-neutral-500'
+                              ? 'bg-success-50 text-success-700'
+                              : 'bg-neutral-100 text-neutral-600'
                         }`}>
                           <ProgressionIcon progression={complaint.cluster_progression} />
-                          {complaint.cluster_progression}
+                          {tv('progression', complaint.cluster_progression)}
                         </span>
                       )}
                     </div>
                   )}
                   <p className="text-sm text-neutral-600 mb-2">{complaint.description}</p>
-                  <p className="text-xs text-neutral-400">Location: {complaint.ward || complaint.address || 'Lahore'}</p>
+                  <p className="text-xs text-neutral-500">{t('track_location_label')}: {tv('ward', complaint.ward) || complaint.address || t('common_lahore')}</p>
                 </div>
               </Popup>
             </Marker>
@@ -241,16 +246,19 @@ function MapContent({ complaints, onSelectComplaint, onMapClick, onUpvoteChange,
 }
 
 export default function LiveMap() {
-  useDocumentTitle('Live Hazard Map')
+  useDocumentTitle('map_title')
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ critical: 0, high: 0, medium: 0, low: 0 })
   const [search, setSearch] = useState('')
   const [selectedTypes, setSelectedTypes] = useState(['pothole', 'manhole', 'street_light', 'encroachment'])
   const [selectedPriorities, setSelectedPriorities] = useState({ critical: true, inProgress: true, pending: true })
-  const [activeComplaintId, setActiveComplaintId] = useState(null)
+  const [searchParams] = useSearchParams()
+  const focusId = searchParams.get('focus')
+  const [activeComplaintId, setActiveComplaintId] = useState(focusId)
   const [viewMode, setViewMode] = useState('markers')
-  const { t, toggleLanguage } = useLanguage()
+  const { t, tv, language } = useLanguage()
+  const other = language === 'ur' ? 'en' : 'ur'
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -299,12 +307,13 @@ export default function LiveMap() {
   }, [complaints, search, selectedTypes, selectedPriorities])
 
   useEffect(() => {
-    if (!activeComplaintId) return
+    // Wait for the first load, or a ?focus= id would be cleared before it exists.
+    if (!activeComplaintId || loading) return
     if (!filteredComplaints.some((complaint) => complaint.complaint_id === activeComplaintId)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing pattern: clear stale selection
       setActiveComplaintId(null)
     }
-  }, [filteredComplaints, activeComplaintId])
+  }, [filteredComplaints, activeComplaintId, loading])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -319,6 +328,7 @@ export default function LiveMap() {
     : null
 
   const closeCard = () => setActiveComplaintId(null)
+  const focusComplaint = focusId ? complaints.find((c) => c.complaint_id === focusId) : null
 
   const handleUpvoteChange = (complaintId, next) => {
     setComplaints((prev) =>
@@ -346,245 +356,203 @@ export default function LiveMap() {
     { key: 'encroachment', label: t('map_encroachment') },
   ]
 
+  const legend = ['critical', 'high', 'medium', 'low']
+  const toggleClass = (active) =>
+    `h-8 rounded-sm border px-3 text-[13px] font-medium transition-colors ${
+      active ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-neutral-300 bg-white text-neutral-600 hover:border-neutral-400'
+    }`
+
   return (
     <>
       <Header />
-      <div className="min-h-[calc(100vh-64px)] bg-neutral-50">
-        {/* ── Top Bar ── */}
-        <div className="bg-white/95 backdrop-blur-sm shadow-subtle border-b border-neutral-100 p-4">
-          <div className="mx-auto max-w-[1600px] flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-xl font-heading font-bold text-neutral-900">{t('map_title')}</h1>
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge variant="critical">Critical: {stats.critical}</Badge>
-              <Badge variant="high">High: {stats.high}</Badge>
-              <Badge variant="medium">Medium: {stats.medium}</Badge>
-              <Badge variant="low">Low: {stats.low}</Badge>
-              <div className="flex rounded-full border border-neutral-100 bg-neutral-50 p-1 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('markers')}
-                  aria-pressed={viewMode === 'markers'}
-                  className={`rounded-full px-3 py-1.5 transition ${viewMode === 'markers' ? 'bg-primary-800 text-white shadow-subtle' : 'text-neutral-500 hover:text-primary-700'}`}
-                >
-                  {t('map_markers')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('heatmap')}
-                  aria-pressed={viewMode === 'heatmap'}
-                  className={`rounded-full px-3 py-1.5 transition ${viewMode === 'heatmap' ? 'bg-primary-800 text-white shadow-subtle' : 'text-neutral-500 hover:text-primary-700'}`}
-                >
-                  {t('map_heatmap')}
-                </button>
+      <div className="bg-neutral-50">
+        {/* Toolbar: title, the legend with live counts, and the view switch. */}
+        <div className="border-b border-neutral-200 bg-white">
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+            <div>
+              <h1 className="font-heading text-xl font-bold">{t('map_title')}</h1>
+              <p lang={other} dir={other === 'ur' ? 'rtl' : 'ltr'} style={{ textAlign: language === 'ur' ? 'right' : 'left' }} className="text-[13px] text-neutral-500">
+                {translate(other, 'map_title')}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <p className="text-sm text-neutral-600 tnum">{t('map_summary', { n: filteredComplaints.length, pct: resolutionRate })}</p>
+              <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-700" aria-label={t('map_urgency_legend')}>
+                {legend.map((level) => (
+                  <li key={level} className="inline-flex items-center gap-1.5">
+                    <UrgencyMark level={level} size={11} />
+                    {t(`urgency_${level}`)}
+                    <span className="font-semibold text-neutral-900 tnum">{stats[level]}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-1" role="group" aria-label={`${t('map_markers')} / ${t('map_heatmap')}`}>
+                {['markers', 'heatmap'].map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setViewMode(mode)}
+                    aria-pressed={viewMode === mode}
+                    className={toggleClass(viewMode === mode)}
+                  >
+                    {t(mode === 'markers' ? 'map_markers' : 'map_heatmap')}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="mx-auto flex min-h-[calc(100vh-120px)] max-w-[1600px] flex-row overflow-hidden">
-          {/* ── Sidebar ── */}
-          <aside className="w-[285px] flex-shrink-0 border-r border-neutral-100 bg-white/95 p-4">
-            <div className="space-y-5">
-              {/* Search */}
-              <div>
-                <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 shadow-subtle">
-                  <div className="flex items-center gap-2 text-sm text-neutral-400">
-                    <Search size={15} className="text-neutral-400 flex-shrink-0" />
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder={t('map_search_placeholder')}
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
-                    />
-                  </div>
-                </div>
-              </div>
+        {/* Phones: map first at full width, filters below. */}
+        <div className="mx-auto flex min-h-[calc(100dvh-121px)] max-w-[1600px] flex-col overflow-hidden md:flex-row">
+          <aside className="order-last w-full flex-shrink-0 border-t border-neutral-200 bg-white md:order-none md:w-[300px] md:border-e md:border-t-0">
+            <div className="border-b border-neutral-200 p-4">
+              <label className="relative block">
+                <span className="sr-only">{t('map_search_placeholder')}</span>
+                <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-neutral-500" aria-hidden="true" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('map_search_placeholder')}
+                  className="field ps-9"
+                />
+              </label>
+            </div>
 
-              {/* Hazard Type Filters */}
-              <div>
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">{t('map_hazard_type')}</div>
-                <div className="flex flex-wrap gap-2">
-                  {typeButtons.map((type) => {
-                    const active = selectedTypes.includes(type.key)
+            <fieldset className="border-b border-neutral-200 p-4">
+              <legend className="label float-start mb-3 w-full">{t('map_hazard_type')}</legend>
+              <div className="clear-both flex flex-wrap gap-2">
+                {typeButtons.map((type) => (
+                  <button
+                    key={type.key}
+                    type="button"
+                    onClick={() => toggleType(type.key)}
+                    aria-pressed={selectedTypes.includes(type.key)}
+                    className={toggleClass(selectedTypes.includes(type.key))}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="border-b border-neutral-200 p-4">
+              <legend className="label float-start mb-2 w-full">{t('map_priority_status')}</legend>
+              <div className="clear-both space-y-1 text-sm text-neutral-800">
+                {[
+                  ['critical', 'map_critical_urgency'],
+                  ['inProgress', 'map_in_progress'],
+                  ['pending', 'map_pending_verification'],
+                ].map(([key, label]) => (
+                  <label key={key} className="flex min-h-8 cursor-pointer items-center gap-2.5">
+                    <input type="checkbox" checked={selectedPriorities[key]} onChange={() => togglePriority(key)} className="h-4 w-4" />
+                    {t(label)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <div className="p-4">
+              <h2 className="label mb-2">{t('map_recent_reports')}</h2>
+              {recentReports.length > 0 ? (
+                <ul className="-mx-4">
+                  {recentReports.map((complaint) => {
+                    const isSelected = activeComplaintId === complaint.complaint_id
                     return (
-                      <button
-                        key={type.key}
-                        type="button"
-                        onClick={() => toggleType(type.key)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold transition ${active ? 'bg-primary-100 text-primary-700 ring-1 ring-primary-200' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'}`}
-                      >
-                        {type.label}
-                      </button>
+                      <li key={complaint.complaint_id}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveComplaintId(complaint.complaint_id)}
+                          aria-pressed={isSelected}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-start transition-colors ${isSelected ? 'bg-primary-50' : 'hover:bg-neutral-50'}`}
+                        >
+                          <UrgencyMark level={complaint.urgency_level} size={11} className="mt-1.5" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-neutral-900">{complaint.description || complaint.complaint_id}</span>
+                            <span className="mt-0.5 flex items-center gap-2 text-[13px] text-neutral-500">
+                              {tv('ward', complaint.ward) || complaint.address || t('common_lahore')}
+                              <span className={`rounded-sm px-1.5 text-xs ${statusClasses[complaint.status] || statusClasses.submitted}`}>{tv('status', complaint.status || 'pending')}</span>
+                            </span>
+                          </span>
+                        </button>
+                      </li>
                     )
                   })}
-                </div>
-              </div>
-
-              {/* Priority Filters */}
-              <div>
-                <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">{t('map_priority_status')}</div>
-                <div className="space-y-2 text-sm text-neutral-600">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={selectedPriorities.critical} onChange={() => togglePriority('critical')} className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-300" />
-                    {t('map_critical_urgency')}
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={selectedPriorities.inProgress} onChange={() => togglePriority('inProgress')} className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-300" />
-                    {t('map_in_progress')}
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={selectedPriorities.pending} onChange={() => togglePriority('pending')} className="h-4 w-4 rounded border-neutral-300 text-primary-500 focus:ring-primary-300" />
-                    {t('map_pending_verification')}
-                  </label>
-                </div>
-              </div>
-
-              {/* Recent Reports */}
-              <div className="border-t border-neutral-100 pt-4">
-                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">{t('map_recent_reports')}</div>
-                <div className="space-y-3">
-                  {recentReports.length > 0 ? recentReports.map((complaint) => {
-                    const isSelected = activeComplaintId === complaint.complaint_id
-                    const isCritical = getPriorityKey(complaint) === 'critical'
-                    const selectedClass = isSelected
-                      ? 'border-danger bg-danger text-white shadow-lg shadow-danger-200'
-                      : isCritical
-                        ? 'border-danger-200 bg-danger-50 hover:bg-danger-100'
-                        : 'border-neutral-200 bg-white hover:bg-neutral-50'
-
-                    return (
-                    <button
-                      key={complaint.complaint_id}
-                      type="button"
-                      onClick={() => setActiveComplaintId(complaint.complaint_id)}
-                      className={`w-full rounded-xl border p-3 text-left transition hover:shadow-subtle ${selectedClass}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <Badge variant={isSelected || isCritical ? 'critical' : 'default'} className="text-[10px] px-2 py-1">
-                          {String(complaint.urgency_level || complaint.status || 'N/A').toUpperCase()}
-                        </Badge>
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${isSelected ? 'bg-white text-danger' : getStatusClass(complaint)}`}>{complaint.status || 'pending'}</span>
-                      </div>
-                      <div className={`mt-2 text-sm font-semibold ${isSelected ? 'text-white' : 'text-neutral-800'}`}>{complaint.description || complaint.complaint_id}</div>
-                      <div className={`mt-1 text-xs ${isSelected ? 'text-danger-100' : 'text-neutral-400'}`}>{complaint.ward || complaint.address || 'Lahore'}</div>
-                    </button>
-                      )
-                  }) : (
-                    <div className="rounded-xl border border-dashed border-neutral-200 p-4 text-sm text-neutral-400">
-                      {t('map_no_reports_match')}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Language Toggle */}
-              <div className="pt-3">
-                <button
-                  type="button"
-                  onClick={toggleLanguage}
-                  className="w-full rounded-lg bg-primary-800 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-900 transition"
-                >
-                  {t('language_toggle')}
-                </button>
-              </div>
+                </ul>
+              ) : (
+                <p className="py-4 text-sm text-neutral-500">{t('map_no_reports_match')}</p>
+              )}
             </div>
           </aside>
 
-          {/* ── Map Area ── */}
-          <section className="relative min-w-0 flex-1 overflow-hidden bg-neutral-50 h-[calc(100vh-120px)]">
+          <section className="relative h-[65dvh] min-w-0 flex-none overflow-hidden bg-neutral-100 md:h-[calc(100dvh-121px)] md:flex-1">
             {loading ? (
-              <div className="flex h-full items-center justify-center">
-                <Loader2 size={36} className="text-primary-500 animate-spin" />
+              <div className="flex h-full items-center justify-center" role="status">
+                <Loader2 size={28} className="animate-spin text-neutral-500" aria-hidden="true" />
               </div>
             ) : (
               <div className="absolute inset-0">
                 <MapContainer center={[31.5204, 74.3587]} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom className="z-0">
                   <MapContent complaints={filteredComplaints} onSelectComplaint={setActiveComplaintId} onMapClick={closeCard} onUpvoteChange={handleUpvoteChange} viewMode={viewMode} />
+                  <FocusOnComplaint complaint={focusComplaint} />
                 </MapContainer>
               </div>
             )}
 
-            {/* ── Floating Preview Card ── */}
             {activeComplaint && (
-              <div className="absolute left-1/2 top-20 z-20 w-[290px] -translate-x-1/2 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-elevated">
-                <button
-                  type="button"
-                  onClick={closeCard}
-                  aria-label="Close hazard preview"
-                  className="absolute right-2 top-2 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white transition hover:bg-black/60"
-                >
-                  <X size={14} />
-                </button>
-                <div className="h-28 bg-gradient-to-br from-neutral-600 via-neutral-700 to-neutral-800">
+              <div className="absolute inset-x-4 top-4 z-20 mx-auto max-w-[300px] border border-neutral-300 bg-white shadow-elevated">
+                <div className="relative h-32 bg-neutral-200">
                   {activeComplaint.image_url ? (
                     <img src={activeComplaint.image_url} alt={activeComplaint.complaint_id} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-white/80">Reported hazard preview</div>
+                    <div className="flex h-full items-center justify-center text-sm text-neutral-500">{t('map_preview_placeholder')}</div>
                   )}
+                  <button
+                    type="button"
+                    onClick={closeCard}
+                    aria-label={t('map_close_preview')}
+                    className="absolute end-2 top-2 flex h-8 w-8 items-center justify-center rounded-sm bg-neutral-900/80 text-white transition-colors hover:bg-neutral-900"
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </button>
                 </div>
                 <div className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <div className="flex gap-2 text-[10px] font-bold uppercase">
-                        <Badge variant="warning" className="px-2 py-1">{(activeComplaint.detected_classes?.[0] || 'Pothole').toUpperCase()}</Badge>
-                        <Badge variant={activeComplaint.urgency_level?.toLowerCase() || 'default'} className="px-2 py-1">{(activeComplaint.urgency_level || 'critical').toUpperCase()}</Badge>
-                        {activeComplaint.linked_count > 1 && (
-                          <Badge variant="accent" className="px-2 py-1 inline-flex items-center gap-1"><Users size={10} /> {activeComplaint.linked_count} linked</Badge>
-                        )}
-                      </div>
-                      <h3 className="text-lg font-heading font-bold text-neutral-900 leading-tight">{activeComplaint.description || 'Severely Damaged Road'}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {activeComplaint.urgency_level && (
+                      <Badge variant={activeComplaint.urgency_level.toLowerCase()}>{tv('urgency', activeComplaint.urgency_level)}</Badge>
+                    )}
+                    <Badge>{tv('hazard', activeComplaint.detected_classes?.[0]) || t('map_hazard')}</Badge>
+                    {activeComplaint.linked_count > 1 && (
+                      <Badge variant="accent"><Users size={11} aria-hidden="true" /> {t('map_linked', { n: activeComplaint.linked_count })}</Badge>
+                    )}
+                  </div>
+                  <h3 className="mt-3 text-base font-semibold leading-snug">{activeComplaint.description || activeComplaint.complaint_id}</h3>
+                  <div className="mt-2 space-y-0.5 text-sm text-neutral-600">
+                    <div>{tv('ward', activeComplaint.ward) || activeComplaint.address || t('common_lahore')}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="tnum" dir="ltr">{activeComplaint.complaint_id}</span>
+                      <span className={`rounded-sm px-1.5 text-xs ${statusClasses[activeComplaint.status] || statusClasses.submitted}`}>{tv('status', activeComplaint.status || 'pending')}</span>
                     </div>
                   </div>
-                  <div className="mt-3 space-y-1 text-sm text-neutral-500">
-                    <div>{activeComplaint.ward || activeComplaint.address || 'Canal Bank Road, near Punjab University'}</div>
-                    <div>Anonymous Citizen</div>
-                    <div className="text-primary-600 font-semibold">{activeComplaint.status || 'In Progress'}</div>
-                  </div>
-                  <Button
-                    type="button"
-                    className="mt-4 w-full !rounded-none !bg-primary-800 !py-3 text-sm font-bold hover:!bg-primary-900"
-                    onClick={() => navigate(`/complaint/${activeComplaint.complaint_id}`)}
-                  >
+                  <Button type="button" className="mt-4 w-full" onClick={() => navigate(`/complaint/${activeComplaint.complaint_id}`)}>
                     {t('map_view_full_details')}
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* ── Stats Floating Card ── */}
-            <div className="absolute right-4 top-4 z-20 w-[220px] rounded-xl border border-neutral-100 bg-white p-4 shadow-elevated">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
-                <BarChart3 size={12} />
-                {t('map_active_hazards')}
-              </div>
-              <div className="mt-2 flex items-end gap-3">
-                <div className="text-4xl font-heading font-bold text-neutral-900">{filteredComplaints.length || 142}</div>
-                <div className="text-right text-sm">
-                  <div className="font-semibold text-danger">{stats.critical} critical now</div>
-                  <div className="text-neutral-400">{t('map_total_reported')}</div>
-                </div>
-              </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-neutral-100">
-                <div className="h-full w-[75%] rounded-full bg-primary-500" />
-              </div>
-              <div className="mt-2 text-xs text-neutral-400">{resolutionRate || 75}% {t('map_resolution_rate')}</div>
-            </div>
 
-            {/* ── Legend ── */}
-            <div className="absolute left-4 bottom-4 z-20 rounded-xl border border-neutral-100 bg-white p-3 shadow-elevated">
-              <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">{t('map_urgency_legend')}</div>
-              <div className="space-y-1.5">
-                {['critical', 'high', 'medium', 'low'].map((level) => (
-                  <div key={level} className="flex items-center gap-2 text-xs text-neutral-600">
-                    <span
-                      className="inline-block h-3 w-3 rounded-full border-2 border-white shadow-subtle"
-                      style={{ backgroundColor: urgencyColors[level] }}
-                    />
+            <div className="absolute bottom-4 start-4 z-20 hidden border border-neutral-300 bg-white px-3 py-2.5 shadow-elevated md:block">
+              <div className="label mb-1.5">{t('map_urgency_legend')}</div>
+              <ul className="space-y-1">
+                {legend.map((level) => (
+                  <li key={level} className="flex items-center gap-2 text-[13px] text-neutral-700">
+                    <UrgencyMark level={level} size={11} />
                     {t(`urgency_${level}`)}
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           </section>
         </div>

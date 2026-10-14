@@ -34,6 +34,14 @@ class DashboardStatsView(APIView):
         most_common_hazard = hazard_counter.most_common(1)
         most_common_hazard = most_common_hazard[0][0] if most_common_hazard else None
 
+        # Shown on the public home page, which used to print a made-up "2.4 days".
+        samples = [
+            c.resolution_time_days
+            for c in Complaint.objects.filter(status="resolved", resolved_at__isnull=False)
+            if c.resolution_time_days is not None
+        ]
+        avg_resolution_days = round(sum(samples) / len(samples), 1) if samples else None
+
         return Response(
             {
                 "total_complaints": total_complaints,
@@ -42,6 +50,7 @@ class DashboardStatsView(APIView):
                 "critical_count": critical_count,
                 "resolution_rate": resolution_rate,
                 "most_common_hazard": most_common_hazard,
+                "avg_resolution_days": avg_resolution_days,
             },
             status=status.HTTP_200_OK,
         )

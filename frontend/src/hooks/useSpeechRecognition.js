@@ -55,11 +55,8 @@ export default function useSpeechRecognition({ lang = 'ur-PK' } = {}) {
       // "aborted" and "no-speech" are ordinary outcomes, not failures worth
       // showing to someone who simply stopped talking.
       if (event.error === 'aborted' || event.error === 'no-speech') return
-      setError(
-        event.error === 'not-allowed'
-          ? 'Microphone permission was denied. You can still type your description.'
-          : 'Speech recognition is unavailable right now. Please type instead.'
-      )
+      // A translation key, so the message follows the UI language.
+      setError(event.error === 'not-allowed' ? 'voice_error_denied' : 'voice_error_unavailable')
       setListening(false)
     }
 

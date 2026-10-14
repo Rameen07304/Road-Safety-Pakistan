@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
-import { Card, Badge, Button } from '../../components/UI'
+import { Button, PageTitle, UrgencyMark } from '../../components/UI'
 import UpvoteButton from '../../components/UpvoteButton'
-import { Loader2, Inbox, Building2 } from 'lucide-react'
+import { statusClasses } from '../../utils/urgencyHelpers'
+import { Loader2, Building2 } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
+import { useLanguage } from '../../context/LanguageContext'
 
 export default function MyComplaints() {
-  useDocumentTitle('My Complaints')
+  useDocumentTitle('nav_my_complaints')
+  const { t, tv, tvList, locale } = useLanguage()
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
@@ -36,104 +39,94 @@ export default function MyComplaints() {
     return c.status === filter
   })
 
+  const filters = [
+    { id: 'all', label: t('common_all'), count: complaints.length },
+    { id: 'pending', label: t('status_pending'), count: complaints.filter(c => c.status !== 'resolved').length },
+    { id: 'resolved', label: t('status_resolved'), count: complaints.filter(c => c.status === 'resolved').length },
+  ]
+
   return (
     <>
       <Header />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="mb-8">
-          <h1 className="text-3xl font-heading font-bold text-neutral-900 mb-2">My Complaints</h1>
-          <p className="text-neutral-500">Track all your reported road hazards and their status</p>
-        </div>
+      <PageTitle titleKey="nav_my_complaints" subtitle={t('mc_subtitle')} />
 
-        {/* Filter Buttons */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {[
-            { id: 'all', label: 'All', count: complaints.length },
-            { id: 'pending', label: 'Pending', count: complaints.filter(c => c.status !== 'resolved').length },
-            { id: 'resolved', label: 'Resolved', count: complaints.filter(c => c.status === 'resolved').length },
-          ].map(f => (
+      <main className="mx-auto max-w-page px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex border-b border-neutral-300" role="tablist">
+          {filters.map(f => (
             <button
               key={f.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === f.id}
               onClick={() => setFilter(f.id)}
-              className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                filter === f.id
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              className={`-mb-px inline-flex h-11 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors ${
+                filter === f.id ? 'border-primary-500 text-neutral-900' : 'border-transparent text-neutral-500 hover:text-neutral-800'
               }`}
             >
-              {f.label} <span className={`ml-2 px-2 py-0.5 rounded ${filter === f.id ? 'bg-white/20' : 'bg-neutral-200'}`}>{f.count}</span>
+              {f.label}
+              <span className="text-neutral-500 tnum">{f.count}</span>
             </button>
           ))}
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center h-96">
-            <Loader2 size={36} className="text-primary-500 animate-spin" />
+          <div className="flex h-60 items-center justify-center" role="status">
+            <Loader2 size={28} className="animate-spin text-neutral-500" aria-hidden="true" />
           </div>
         ) : filteredComplaints.length === 0 ? (
-          <Card className="text-center py-12">
-            <div className="w-16 h-16 bg-neutral-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Inbox size={28} className="text-neutral-300" />
-            </div>
-            <h2 className="text-2xl font-heading font-bold text-neutral-900 mb-2">No Complaints Yet</h2>
-            <p className="text-neutral-500 mb-6">You haven't reported any road hazards yet.</p>
-            <Button onClick={() => navigate('/report')}>Report Your First Hazard</Button>
-          </Card>
+          <div className="py-16 text-center">
+            <h2 className="text-xl font-semibold">{t('mc_empty_title')}</h2>
+            <p className="mt-2 text-neutral-600">{t('dash_no_complaints')}</p>
+            <Button className="mt-6" onClick={() => navigate('/report')}>{t('dash_report_first')}</Button>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <ul className="border-b border-neutral-200 bg-white">
             {filteredComplaints.map(complaint => (
-              <Card
-                key={complaint.complaint_id}
-                role="link"
-                tabIndex={0}
-                aria-label={`Open complaint ${complaint.complaint_id}`}
-                className="cursor-pointer transition hover:shadow-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                onClick={() => navigate(`/complaint/${complaint.complaint_id}`)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    navigate(`/complaint/${complaint.complaint_id}`)
-                  }
-                }}
-              >
-                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-heading font-bold text-neutral-900">{complaint.complaint_id}</h3>
-                      <Badge variant={`${complaint.urgency_level.toLowerCase()}`}>
-                        {complaint.urgency_level} (Score: {complaint.urgency_score}/100)
-                      </Badge>
-                    </div>
-                    <p className="text-neutral-600 mb-2 line-clamp-2">{complaint.description}</p>
-                    <div className="flex flex-wrap gap-3 text-sm text-neutral-500">
-                      <span>Location: {complaint.ward || 'N/A'}</span>
-                      <span>Date: {new Date(complaint.submitted_at).toLocaleDateString()}</span>
-                      <span>AI: {complaint.detected_classes?.join(', ') || 'Analyzing...'}</span>
-                      {complaint.assigned_department && (
-                        <span className="inline-flex items-center gap-1 rounded-lg bg-info-light px-2 py-0.5 text-xs font-semibold text-info">
-                          <Building2 size={11} /> {complaint.assigned_department}
-                        </span>
-                      )}
-                    </div>
+              <li key={complaint.complaint_id} className="flex gap-4 border-t border-neutral-200 px-4 py-4 first:border-t-0 sm:px-5">
+                <UrgencyMark level={complaint.urgency_level} size={12} className="mt-1.5" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <Link
+                      to={`/complaint/${complaint.complaint_id}`}
+                      aria-label={t('common_open_complaint', { id: complaint.complaint_id })}
+                      className="-my-1 inline-block py-1 font-semibold text-neutral-900 tnum hover:text-primary-600 hover:underline"
+                      dir="ltr"
+                    >
+                      {complaint.complaint_id}
+                    </Link>
+                    <span className="text-sm text-neutral-600">
+                      {tv('urgency', complaint.urgency_level)} · <span className="tnum">{t('mc_score', { n: complaint.urgency_score })}</span>
+                    </span>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Badge variant={complaint.status === 'resolved' ? 'success' : 'warning'}>
-                      {complaint.status.toUpperCase()}
-                    </Badge>
-                    <UpvoteButton
-                      complaintId={complaint.complaint_id}
-                      upvotes={complaint.upvotes || 0}
-                      hasUpvoted={!!complaint.has_upvoted}
-                      size="sm"
-                      onChange={(next) => setComplaints((prev) => prev.map((c) => c.complaint_id === complaint.complaint_id ? { ...c, upvotes: next.upvotes, has_upvoted: next.hasUpvoted } : c))}
-                    />
+                  <p className="mt-1 line-clamp-2 text-[15px] text-neutral-800">{complaint.description}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-neutral-500">
+                    <span>{t('mc_location', { value: tv('ward', complaint.ward) || t('common_na') })}</span>
+                    <span className="tnum">{t('mc_date', { value: new Date(complaint.submitted_at).toLocaleDateString(locale) })}</span>
+                    <span>{t('mc_ai', { value: tvList('hazard', complaint.detected_classes) || t('mc_analyzing') })}</span>
+                    {complaint.assigned_department && (
+                      <span className="inline-flex items-center gap-1">
+                        <Building2 size={12} aria-hidden="true" /> {tv('dept', complaint.assigned_department)}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </Card>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <span className={`rounded-sm px-2 py-0.5 text-xs font-semibold ${statusClasses[complaint.status] || 'bg-neutral-100 text-neutral-700'}`}>
+                    {tv('status', complaint.status)}
+                  </span>
+                  <UpvoteButton
+                    complaintId={complaint.complaint_id}
+                    upvotes={complaint.upvotes || 0}
+                    hasUpvoted={!!complaint.has_upvoted}
+                    size="sm"
+                    onChange={(next) => setComplaints((prev) => prev.map((c) => c.complaint_id === complaint.complaint_id ? { ...c, upvotes: next.upvotes, has_upvoted: next.hasUpvoted } : c))}
+                  />
+                </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </div>
+      </main>
       <Footer />
     </>
   )

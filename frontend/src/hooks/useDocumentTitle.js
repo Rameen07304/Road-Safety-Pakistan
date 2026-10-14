@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
-
-const SUFFIX = 'Road Safety Pakistan'
+import { useLanguage } from '../context/LanguageContext'
 
 /**
  * Set the document title for a route.
@@ -9,14 +8,19 @@ const SUFFIX = 'Road Safety Pakistan'
  * left browser tabs, history entries and screen-reader announcements
  * indistinguishable from one another.
  *
- * Pass the page-specific part only -- the site name is appended here.
+ * Pass the translation key of the page-specific part only -- the site name
+ * is appended here, and both follow the current UI language.
  */
-export default function useDocumentTitle(title) {
+export default function useDocumentTitle(titleKey) {
+  const { t } = useLanguage()
+  const title = titleKey ? t(titleKey) : ''
+  const suffix = t('app_name')
+
   useEffect(() => {
     const previous = document.title
-    document.title = title ? `${title} — ${SUFFIX}` : SUFFIX
+    document.title = title ? `${title} — ${suffix}` : suffix
     return () => {
       document.title = previous
     }
-  }, [title])
+  }, [title, suffix])
 }

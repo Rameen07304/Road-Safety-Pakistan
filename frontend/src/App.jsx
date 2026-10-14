@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, 
-         Navigate } from 'react-router-dom'
+         Navigate, useLocation } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
+import { useLanguage } from './context/LanguageContext'
 
 // Pages are code-split per route: the whole app used to ship as one
 // ~590 kB bundle, so a citizen on a phone downloaded every admin screen
@@ -16,6 +17,7 @@ const TrackComplaint = lazy(() => import('./pages/public/TrackComplaint'))
 const Login          = lazy(() => import('./pages/auth/Login'))
 const Register       = lazy(() => import('./pages/auth/Register'))
 const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'))
+const ResetPassword  = lazy(() => import('./pages/auth/ResetPassword'))
 
 // Citizen pages
 const ReportHazard      = lazy(() => import('./pages/citizen/ReportHazard'))
@@ -30,10 +32,11 @@ const FlaggedQueue    = lazy(() => import('./pages/admin/FlaggedQueue'))
 
 // Shown while a route chunk is still downloading.
 function RouteFallback() {
+  const { t } = useLanguage()
   return (
     <div className="min-h-screen flex items-center justify-center" role="status" aria-live="polite">
       <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary-600"></div>
-      <span className="sr-only">Loading page</span>
+      <span className="sr-only">{t('common_loading_page')}</span>
     </div>
   )
 }
@@ -41,6 +44,7 @@ function RouteFallback() {
 // Route guard: citizen only
 function CitizenRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return (
     <div className="min-h-screen flex items-center
                     justify-center">
@@ -49,7 +53,8 @@ function CitizenRoute({ children }) {
                       border-primary"></div>
     </div>
   )
-  if (!user) return <Navigate to="/login" replace />
+  // Remember where the guest was going so login can return them there.
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (user.role === 'admin') 
     return <Navigate to="/admin/dashboard" replace />
   return children
@@ -117,6 +122,9 @@ export default function App() {
             <ForgotPassword />
           </GuestRoute>
         } />
+
+        {/* Opened from the reset email; no guest guard so it also works while signed in. */}
+        <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
 
         {/* Citizen routes */}
         <Route path="/report" element={

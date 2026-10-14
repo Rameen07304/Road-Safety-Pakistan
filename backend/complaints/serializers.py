@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
@@ -5,6 +6,29 @@ from rest_framework import serializers
 from .models import Complaint, ComplaintStatusHistory, predict_resolution_days
 
 User = get_user_model()
+
+# Fields only the reporter and admins may see on a single complaint.
+PRIVATE_DETAIL_FIELDS = ("citizen_name", "admin_notes", "flag_reason")
+
+
+def can_view_private(request, complaint):
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return False
+    return getattr(user, "role", None) == "admin" or complaint.citizen_id == user.id
+
+
+def validate_cloudinary_url(value):
+    """Accept only images hosted on this project's Cloudinary account.
+
+    The server later downloads and opens this URL; a free-form string let any
+    citizen point it at internal hosts (SSRF) or local files, whose bytes were
+    then forwarded to the external detection service.
+    """
+    cloud = settings.CLOUDINARY_CLOUD_NAME
+    if not cloud or not str(value).startswith(f"https://res.cloudinary.com/{cloud}/"):
+        raise serializers.ValidationError("Image must be uploaded through this site.")
+    return value
 
 
 def _build_summary(obj):
@@ -38,7 +62,7 @@ def _build_summary(obj):
 
 
 class ComplaintSubmitSerializer(serializers.ModelSerializer):
-    image_url = serializers.CharField(write_only=True)
+    image_url = serializers.CharField(write_only=True, validators=[validate_cloudinary_url])
 
     class Meta:
         model = Complaint
@@ -195,6 +219,16 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
     def get_citizen_name(self, obj):
         return obj.citizen.full_name if obj.citizen else None
 
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        if not can_view_private(self.context.get("request"), obj):
+            for field in PRIVATE_DETAIL_FIELDS:
+                data.pop(field, None)
+            # Staff names stay internal; the status and note are what citizens need.
+            for entry in data.get("status_history") or []:
+                entry.pop("changed_by", None)
+        return data
+
     def get_annotated_image_base64(self, obj):
         if not isinstance(obj.detection_raw, dict):
             return None
@@ -229,6 +263,9 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
 
 class ComplaintStatusUpdateSerializer(serializers.ModelSerializer):
     resolved_image_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    def validate_resolved_image_url(self, value):
+        return validate_cloudinary_url(value) if value else value
 
     class Meta:
         model = Complaint

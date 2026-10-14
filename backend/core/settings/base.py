@@ -60,7 +60,6 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "cloudinary",
-    "cloudinary_storage",
     "django_filters",
     "accounts",
     "complaints",
@@ -134,6 +133,13 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    # Per client IP; covers login, register and password reset.
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": os.environ.get("AUTH_THROTTLE_RATE", "10/min"),
+    },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
 }
@@ -144,17 +150,18 @@ JWT_REFRESH_TOKEN_LIFETIME_DAYS = int(os.environ.get("JWT_REFRESH_TOKEN_LIFETIME
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=JWT_ACCESS_TOKEN_LIFETIME_MINUTES),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=JWT_REFRESH_TOKEN_LIFETIME_DAYS),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
+    # No rotation: the refresh token lives in an httpOnly cookie that scripts
+    # cannot read, and rotating it raced with page reloads and second tabs (a
+    # reload during a refresh kept the revoked cookie and signed the user out).
+    # Logout and password changes still revoke it via the blacklist.
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-CLOUDINARY_STORAGE = {
-    "CLOUD_NAME": os.environ.get("CLOUDINARY_CLOUD_NAME"),
-    "API_KEY": os.environ.get("CLOUDINARY_API_KEY"),
-    "API_SECRET": os.environ.get("CLOUDINARY_API_SECRET"),
-}
-DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+# Images go straight to Cloudinary via cloudinary.uploader; no Django storage
+# backend is needed. The name is used to accept only this account's URLs.
+CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME")
 
 ADMIN_URL = os.environ.get("ADMIN_URL", "admin-rsp-secure/")
 ML_MODEL_PATH = os.environ.get("ML_MODEL_PATH", "ml_models/best.pt")
@@ -168,6 +175,19 @@ CORS_ALLOWED_ORIGINS = [
     for origin in cors_origins.split(",")
     if origin.strip()
 ]
+# The refresh-token cookie is sent cross-origin (frontend and API on different ports).
+CORS_ALLOW_CREDENTIALS = True
+
+AUTH_REFRESH_COOKIE = "rsp_refresh"
+AUTH_COOKIE_SECURE = os.environ.get("AUTH_COOKIE_SECURE", "False").lower() in ("1", "true", "yes")
+# "Lax" works when the frontend and API share a site (e.g. localhost ports, or
+# app.example.com + api.example.com). Use "None" (with Secure) for different sites.
+AUTH_COOKIE_SAMESITE = os.environ.get("AUTH_COOKIE_SAMESITE", "Lax")
+
+# Used to build password-reset links in emails.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Road Safety Pakistan <no-reply@roadsafety.pk>")
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 1 day
 
 STATIC_URL = "/static/"
 MEDIA_URL = "/media/"

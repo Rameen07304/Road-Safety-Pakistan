@@ -2,90 +2,103 @@
  * Single source of truth for the Road Safety Pakistan palette.
  *
  * Both `tailwind.config.js` and any JavaScript that needs a literal colour
- * (Leaflet map pins, inline SVG illustrations) import from here, so a palette
- * change propagates everywhere instead of drifting between a config file and
+ * (Leaflet map pins and legend marks) import from here, so a palette change
+ * propagates everywhere instead of drifting between a config file and
  * hand-copied hex strings.
  *
- * Semantic colours carry a full tint scale. The 700 step is the text-safe one:
- * every 700-on-50 pair clears WCAG AA, whereas `warning.DEFAULT` on
- * `warning.50` is only 3.07:1 and must not be used for body text.
+ * The system reads like a city survey sheet:
+ * - `neutral` is a cool ink scale on a near-white survey ground (50).
+ * - `primary` is survey blue and is reserved for things you can press.
+ * - `sign` is road-sign green, used only on the bilingual page-title band.
+ * - `urgency` is the map legend; each level also has a shape (UrgencyMark).
+ *
+ * The 700 step of each semantic colour is the text-safe one: every 700-on-50
+ * pair clears WCAG AA.
  */
 
 export const primary = {
-  50: '#eef6f1',
-  100: '#d4eadd',
-  200: '#a8d5b9',
-  300: '#6fb98e',
-  400: '#3f9968',
-  500: '#2f7a55',
-  600: '#245f42',
-  700: '#1b4a33',
-  800: '#143627',
-  900: '#0f281d',
-  DEFAULT: '#2f7a55',
+  50: '#eef3f9',
+  100: '#d6e2f0',
+  200: '#adc5e2',
+  300: '#7fa3cf',
+  400: '#4f7fba',
+  500: '#1d5fa6',
+  600: '#184f8c',
+  700: '#143f70',
+  800: '#0f3157',
+  900: '#0b2440',
+  DEFAULT: '#1d5fa6',
+}
+
+export const sign = {
+  50: '#e8f2ec',
+  700: '#08532d',
+  DEFAULT: '#0b6b3a',
 }
 
 export const neutral = {
-  50: '#faf9f7',
-  100: '#f3f1ed',
-  200: '#e5e2db',
-  300: '#cdc9c0',
-  400: '#9e9a90',
-  500: '#716e65',
-  600: '#58554e',
-  700: '#3d3b35',
-  800: '#2a2924',
-  900: '#1c1b18',
+  50: '#f6f6f3',
+  100: '#ededea',
+  200: '#dcdcd6',
+  300: '#c4c4bd',
+  400: '#8e9091',
+  500: '#5f6366',
+  600: '#4b4f52',
+  700: '#33373a',
+  800: '#22262a',
+  900: '#16191c',
 }
 
 export const urgency = {
-  low: '#2196a8',
-  medium: '#b8860b',
-  high: '#d4501a',
-  critical: '#d42020',
+  low: '#2b7a78',
+  medium: '#b7791f',
+  high: '#c2410c',
+  critical: '#c62828',
 }
 
 export const info = {
-  50: '#f3f7f9',
-  100: '#e1eaf1',
-  200: '#c2d5e2',
-  700: '#244f6d',
-  DEFAULT: '#3574a0',
-  light: '#edf4f9',
+  50: '#eef3f9',
+  100: '#d6e2f0',
+  200: '#adc5e2',
+  700: '#143f70',
+  DEFAULT: '#1d5fa6',
+  light: '#eef3f9',
 }
 
+// Sienna: flagged-for-review and other moderation states.
 export const accent = {
-  DEFAULT: '#c9a227',
-  light: '#f5ecd0',
-  dark: '#a6851e',
+  DEFAULT: '#a65b2a',
+  light: '#f6ebe3',
+  dark: '#7a4019',
 }
 
 export const success = {
-  50: '#f2f7f5',
-  100: '#e0ece5',
-  200: '#c0d8cb',
+  50: '#edf5f0',
+  100: '#d9eadf',
+  200: '#b5d4c1',
   700: '#1f5538',
   DEFAULT: '#2e7d52',
 }
 
 export const danger = {
-  50: '#fcf2f2',
-  100: '#f9dede',
-  200: '#f2bcbc',
-  700: '#901616',
-  DEFAULT: '#d42020',
+  50: '#fcf1f1',
+  100: '#f8dcdc',
+  200: '#efb8b8',
+  700: '#8e1b1b',
+  DEFAULT: '#c62828',
 }
 
 export const warning = {
-  50: '#fbf8f0',
-  100: '#f4edda',
-  200: '#eadbb6',
-  700: '#7d5b07',
-  DEFAULT: '#b8860b',
+  50: '#fbf6ec',
+  100: '#f4e9d0',
+  200: '#e8d3a3',
+  700: '#7a4f0c',
+  DEFAULT: '#b7791f',
 }
 
 export const colors = {
   primary,
+  sign,
   neutral,
   urgency,
   info,

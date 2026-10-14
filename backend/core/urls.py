@@ -1,8 +1,11 @@
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
 
 def health_check(request):
+    # The Django admin path is deliberately not listed: ADMIN_URL only helps
+    # if it is not published by the API itself.
     return JsonResponse({
         'status': 'ok',
         'message': 'Road Safety Pakistan API',
@@ -10,21 +13,17 @@ def health_check(request):
         'endpoints': {
             'auth'      : '/api/auth/',
             'complaints': '/api/complaints/',
-            'detect'    : '/api/detect/',
             'analytics' : '/api/analytics/',
-            'admin_ui'  : '/admin-rsp-secure/',
         }
     })
 
 urlpatterns = [
-    path('', health_check),           # ← add this
-    path('api/', health_check),       # ← and this
-    path('admin-rsp-secure/', admin.site.urls),
+    path('', health_check),
+    path('api/', health_check),
+    path(settings.ADMIN_URL, admin.site.urls),
     path('api/auth/', include('accounts.urls')),
     path('api/complaints/', 
          include('complaints.urls')),
-    path('api/detect/', 
-         include('detection.urls')),
     path('api/analytics/', 
          include('analytics.urls')),
     path('api/admin/', 

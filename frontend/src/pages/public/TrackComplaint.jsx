@@ -1,30 +1,44 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useParams } from 'react-router-dom'
+import { Link, useSearchParams, useParams } from 'react-router-dom'
 import { api } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
-import { Button, Card, Badge, Alert } from '../../components/UI'
+import { Button, Badge, Alert, PageTitle, UrgencyMark } from '../../components/UI'
 import UpvoteButton from '../../components/UpvoteButton'
 import { useLanguage } from '../../context/LanguageContext'
-import { Search, Users, TrendingUp, TrendingDown, Minus, Clock, Image as ImageIcon } from 'lucide-react'
+import { statusClasses } from '../../utils/urgencyHelpers'
+import { Search, Users, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
 
 const ProgressionIcon = ({ progression }) => {
-  if (progression === 'Worsening') return <TrendingUp size={12} />
-  if (progression === 'Improving') return <TrendingDown size={12} />
-  return <Minus size={12} />
+  if (progression === 'Worsening') return <TrendingUp size={12} aria-hidden="true" />
+  if (progression === 'Improving') return <TrendingDown size={12} aria-hidden="true" />
+  return <Minus size={12} aria-hidden="true" />
+}
+
+// One labelled segment of the complaint pass.
+function Segment({ label, children, className = '' }) {
+  return (
+    <div className={`min-w-0 bg-white px-5 py-3 sm:px-6 ${className}`}>
+      <div className="label">{label}</div>
+      <div className="mt-1 truncate text-[15px] font-semibold text-neutral-900">{children}</div>
+    </div>
+  )
 }
 
 export default function TrackComplaint() {
-  useDocumentTitle('Track a Complaint')
-  const { t } = useLanguage()
+  useDocumentTitle('title_track')
+  const { t, tv, tvList, locale } = useLanguage()
   const [searchParams] = useSearchParams()
   const [searchId, setSearchId] = useState(searchParams.get('id') || '')
   const [searchPhone, setSearchPhone] = useState('')
   const [complaint, setComplaint] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { id: routeId } = useParams()
+  const { id: pathId } = useParams()
+  // /complaint/:id and /track?id=... (where the report flow lands) both load
+  // the complaint straight away instead of leaving the user to press Search.
+  const routeId = pathId || searchParams.get('id')
 
   const handleSearch = async (e) => {
     e.preventDefault()
@@ -38,14 +52,14 @@ export default function TrackComplaint() {
         : { phone: searchPhone.trim() }
       const response = await api.get('/api/complaints/track/', { params })
       setComplaint(response.data)
-    } catch {
-      setError('Complaint not found. Please check your Complaint ID or phone number.')
+    } catch (err) {
+      // Phone lookups are limited to the signed-in owner (see ComplaintTrackView).
+      setError(err.response?.status === 403 ? 'track_phone_login' : 'track_not_found')
     } finally {
       setLoading(false)
     }
   }
 
-  // If route contains :id (e.g. /complaint/:id), auto-load that complaint
   useEffect(() => {
     if (!routeId) return
     const fetchByRouteId = async () => {
@@ -57,7 +71,7 @@ export default function TrackComplaint() {
         setComplaint(response.data)
         setSearchId(routeId)
       } catch {
-        setError('Complaint not found. Please check the Complaint ID.')
+        setError('track_not_found_id')
       } finally {
         setLoading(false)
       }
@@ -65,56 +79,135 @@ export default function TrackComplaint() {
     fetchByRouteId()
   }, [routeId])
 
+  const date = (iso) => new Date(iso).toLocaleDateString(locale)
+
   return (
     <>
       <Header />
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="mb-10">
-          <h1 className="text-3xl font-heading font-bold text-neutral-900 mb-2">{t('track_title')}</h1>
-          <p className="text-neutral-500">{t('track_subtitle')}</p>
-        </div>
+      <PageTitle titleKey="track_title" subtitle={t('track_subtitle')} />
 
-        <Card className="mb-8">
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                placeholder={t('track_id_placeholder')}
-                className="px-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-primary-300 outline-none transition"
-              />
-              <input
-                type="tel"
-                value={searchPhone}
-                onChange={(e) => setSearchPhone(e.target.value)}
-                placeholder={t('track_phone_placeholder')}
-                className="px-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-primary-300 outline-none transition"
-              />
-            </div>
-            <Button type="submit" loading={loading} className="w-full">
-              <Search size={16} />
-              {loading ? t('track_searching') : t('track_search_button')}
-            </Button>
-          </form>
-        </Card>
+      <main className="mx-auto max-w-page px-4 py-8 sm:px-6 lg:px-8">
+        <form onSubmit={handleSearch} className="grid gap-3 border-b border-neutral-200 pb-8 md:grid-cols-[1fr_1fr_auto]">
+          <input
+            type="text"
+            value={searchId}
+            onChange={(e) => setSearchId(e.target.value)}
+            placeholder={t('track_id_placeholder')}
+            aria-label={t('track_id_placeholder')}
+            className="field h-11"
+            dir="ltr"
+          />
+          <input
+            type="tel"
+            value={searchPhone}
+            onChange={(e) => setSearchPhone(e.target.value)}
+            placeholder={t('track_phone_placeholder')}
+            aria-label={t('track_phone_placeholder')}
+            className="field h-11"
+          />
+          <Button type="submit" loading={loading} className="h-11 md:min-w-[8rem]">
+            {!loading && <Search size={16} aria-hidden="true" />}
+            {loading ? t('track_searching') : t('track_search_button')}
+          </Button>
+        </form>
 
-        {error && <Alert message={error} type="error" className="mb-8" />}
+        {error && <Alert message={t(error)} type="error" className="mt-8" />}
 
         {complaint && (
-          <Card>
-            <div className="space-y-6">
-              {/* Header row */}
-              <div>
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-xl font-heading font-bold text-neutral-900">{complaint.complaint_id}</h2>
-                    <p className="text-sm text-neutral-400">Filed on {new Date(complaint.submitted_at).toLocaleDateString()}</p>
+          <article className="mt-8 border border-neutral-300 bg-white">
+            {/* The pass: identity and state in labelled segments. */}
+            {/* 1px gaps over a hairline ground draw every divider at every width. */}
+            <div className="grid grid-cols-2 gap-px border-b border-neutral-300 bg-neutral-200 sm:grid-cols-3 lg:grid-cols-5">
+              <Segment label={t('th_id')}>
+                <span className="tnum" dir="ltr">{complaint.complaint_id}</span>
+              </Segment>
+              <Segment label={t('track_submitted')}>
+                <span className="tnum">{date(complaint.submitted_at)}</span>
+              </Segment>
+              <Segment label={t('track_ward_label')}>
+                {tv('ward', complaint.ward) || t('common_na')}
+              </Segment>
+              <Segment label={t('th_urgency')}>
+                <span className="inline-flex items-center gap-2">
+                  <UrgencyMark level={complaint.urgency_level} size={12} />
+                  {tv('urgency', complaint.urgency_level)}
+                  <span className="text-sm font-normal text-neutral-500 tnum">{complaint.urgency_score}/100</span>
+                </span>
+              </Segment>
+              <Segment label={t('track_current_status')} className="col-span-2 lg:col-span-1">
+                <span className={`inline-block rounded-sm px-2 py-0.5 text-sm ${statusClasses[complaint.status] || 'bg-neutral-100 text-neutral-700'}`}>
+                  {tv('status', complaint.status)}
+                </span>
+              </Segment>
+            </div>
+
+            {(complaint.linked_count > 1 || complaint.flagged) && (
+              <div className="divide-y divide-neutral-200 border-b border-neutral-200">
+                {complaint.linked_count > 1 && (
+                  <div className="flex flex-wrap items-center gap-3 bg-neutral-50 px-4 py-3">
+                    <Users size={16} className="shrink-0 text-neutral-500" aria-hidden="true" />
+                    <p className="text-sm font-medium text-neutral-800">
+                      {t(complaint.linked_count - 1 === 1 ? 'track_linked_one' : 'track_linked_many', { n: complaint.linked_count - 1 })}
+                    </p>
+                    {complaint.cluster_progression && (
+                      <Badge variant={complaint.cluster_progression === 'Worsening' ? 'danger' : complaint.cluster_progression === 'Improving' ? 'success' : 'default'} className="ms-auto">
+                        <ProgressionIcon progression={complaint.cluster_progression} />
+                        {tv('progression', complaint.cluster_progression)}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={complaint.urgency_level?.toLowerCase()}>
-                      {complaint.urgency_level} ({complaint.urgency_score}/100)
-                    </Badge>
+                )}
+                {complaint.flagged && (
+                  <div className="flex items-center gap-3 bg-warning-50 px-4 py-3">
+                    <Clock size={16} className="shrink-0 text-warning-700" aria-hidden="true" />
+                    <p className="text-sm font-medium text-warning-700">{t('track_under_review')}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-12">
+              <div className="space-y-8 p-5 sm:p-6 lg:col-span-8">
+                <section>
+                  <h2 className="label">{t('track_description')}</h2>
+                  <p className="mt-2 max-w-[65ch] text-[15px] leading-relaxed text-neutral-800">{complaint.description}</p>
+                </section>
+
+                <section>
+                  <h2 className="label">{t('track_hazard_details')}</h2>
+                  <dl className="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-neutral-500">{t('track_type_label')}</dt>
+                      <dd className="mt-0.5 font-medium text-neutral-900">{tvList('hazard', complaint.detected_classes) || t('common_na')}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-neutral-500">{t('track_location_label')}</dt>
+                      <dd className="mt-0.5 font-medium text-neutral-900">{complaint.address || t('common_na')}</dd>
+                      {complaint.latitude != null && (
+                        <dd className="mt-0.5 text-[13px]">
+                          <span className="text-neutral-600 tnum" dir="ltr">{Number(complaint.latitude).toFixed(4)}, {Number(complaint.longitude).toFixed(4)}</span>{' '}
+                          <Link to={`/map?focus=${complaint.complaint_id}`} className="font-semibold text-primary-600 hover:underline">{t('map_view_on_map')}</Link>
+                        </dd>
+                      )}
+                    </div>
+                    {complaint.assigned_department && (
+                      <div>
+                        <dt className="text-neutral-500">{t('track_department')}</dt>
+                        <dd className="mt-0.5 font-medium text-neutral-900">{tv('dept', complaint.assigned_department)}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt className="text-neutral-500">{t('track_estimated_resolution')}</dt>
+                      <dd className="mt-0.5 font-medium text-neutral-900">
+                        {complaint.predicted_resolution_days != null
+                          ? t('common_days', { n: complaint.predicted_resolution_days })
+                          : complaint.status !== 'resolved'
+                            ? <span className="font-normal text-neutral-500">{t('track_no_estimate')}</span>
+                            : t('common_na')}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-4">
                     <UpvoteButton
                       complaintId={complaint.complaint_id}
                       upvotes={complaint.upvotes || 0}
@@ -122,167 +215,84 @@ export default function TrackComplaint() {
                       onChange={(next) => setComplaint((prev) => ({ ...prev, upvotes: next.upvotes, has_upvoted: next.hasUpvoted }))}
                     />
                   </div>
-                </div>
-              </div>
+                </section>
 
-              {/* Linked reports banner */}
-              {complaint.linked_count > 1 && (
-                <div className="flex items-center gap-3 rounded-lg border border-accent/20 bg-accent-light px-4 py-3">
-                  <Users size={18} className="text-accent-dark flex-shrink-0" />
-                  <p className="text-sm font-semibold text-neutral-700">
-                    {complaint.linked_count - 1} other citizen{complaint.linked_count - 1 !== 1 ? 's' : ''} reported this same issue nearby
-                  </p>
-                  {complaint.cluster_progression && (
-                    <span className={`ml-auto inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
-                      complaint.cluster_progression === 'Worsening'
-                        ? 'bg-danger-100 text-danger'
-                        : complaint.cluster_progression === 'Improving'
-                          ? 'bg-primary-50 text-primary-600'
-                          : 'bg-neutral-100 text-neutral-500'
-                    }`}>
-                      <ProgressionIcon progression={complaint.cluster_progression} />
-                      {complaint.cluster_progression}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Under review notice */}
-              {complaint.flagged && (
-                <div className="flex items-center gap-3 rounded-lg border border-warning/20 bg-warning-50 px-4 py-3">
-                  <Clock size={18} className="text-warning flex-shrink-0" />
-                  <p className="text-sm font-semibold text-urgency-medium">
-                    This complaint is currently under review by our moderation team.
-                  </p>
-                </div>
-              )}
-
-              {/* Status Timeline */}
-              <div>
-                <h3 className="font-heading font-bold text-neutral-800 mb-4">{t('track_status_timeline')}</h3>
-                <div className="space-y-0 relative">
-                  {/* Connecting line */}
-                  <div className="absolute left-[5px] top-2 bottom-2 w-0.5 bg-neutral-100" />
-
-                  {/* Submitted (always first) */}
-                  <div className="flex gap-4 relative py-2">
-                    <div className="w-3 h-3 rounded-full bg-primary-500 mt-1.5 flex-shrink-0 relative z-10 shadow-subtle" />
-                    <div>
-                      <p className="font-semibold text-neutral-800">{t('track_submitted')}</p>
-                      <p className="text-sm text-neutral-400">{new Date(complaint.submitted_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-
-                  {/* Status history entries */}
-                  {complaint.status_history?.map((history, idx) => (
-                    <div key={idx} className="flex gap-4 relative py-2">
-                      <div className="w-3 h-3 rounded-full bg-neutral-300 mt-1.5 flex-shrink-0 relative z-10" />
-                      <div>
-                        <p className="font-semibold text-neutral-800">{history.status}</p>
-                        <p className="text-sm text-neutral-400">{new Date(history.timestamp).toLocaleDateString()}</p>
-                        {history.notes && <p className="text-sm text-neutral-500 mt-1">{history.notes}</p>}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Current status indicator */}
-                  {complaint.status === 'resolved' && (
-                    <div className="flex gap-4 relative py-2">
-                      <div className="w-3 h-3 rounded-full bg-success mt-1.5 flex-shrink-0 relative z-10 shadow-subtle" />
-                      <div>
-                        <p className="font-semibold text-success">Resolved</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Details */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-heading font-bold text-neutral-800 mb-2">{t('track_hazard_details')}</h3>
-                  <div className="space-y-2 text-sm">
-                    <p><strong className="text-neutral-600">{t('track_type_label')}:</strong> <span className="text-neutral-700">{complaint.detected_classes?.join(', ') || 'N/A'}</span></p>
-                    <p><strong className="text-neutral-600">{t('track_location_label')}:</strong> <span className="text-neutral-700">{complaint.address}</span></p>
-                    <p><strong className="text-neutral-600">{t('track_ward_label')}:</strong> <span className="text-neutral-700">{complaint.ward}</span></p>
-                    {complaint.assigned_department && (
-                      <p><strong className="text-neutral-600">Department:</strong> <span className="text-neutral-700">{complaint.assigned_department}</span></p>
-                    )}
-                    {complaint.predicted_resolution_days != null ? (
-                      <p><strong className="text-neutral-600">Estimated resolution:</strong> <span className="text-neutral-700">{complaint.predicted_resolution_days} days</span></p>
-                    ) : complaint.status !== 'resolved' ? (
-                      <p className="text-neutral-300 italic">Not enough data to estimate resolution time</p>
-                    ) : null}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-heading font-bold text-neutral-800 mb-2">{t('track_current_status')}</h3>
-                  <Badge variant={complaint.status === 'resolved' ? 'success' : 'warning'} className="text-base py-2 px-3">
-                    {complaint.status?.toUpperCase()}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <h3 className="font-heading font-bold text-neutral-800 mb-2">{t('track_description')}</h3>
-                <p className="text-neutral-600">{complaint.description}</p>
-              </div>
-
-              {/* Image comparison */}
-              {(complaint.image_url || complaint.annotated_image_url || complaint.annotated_image_base64) && (
-                <div>
-                  <h3 className="font-heading font-bold text-neutral-800 mb-2 flex items-center gap-2">
-                    <ImageIcon size={16} className="text-neutral-400" />
-                    Image Comparison
-                  </h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {complaint.image_url && (
-                      <div>
-                        <p className="text-sm text-neutral-400 mb-2 font-medium">Original photo</p>
-                        <img src={complaint.image_url} alt="Original complaint" className="w-full max-h-64 object-contain rounded-lg shadow-subtle" />
-                      </div>
-                    )}
-                    {(complaint.annotated_image_url || complaint.annotated_image_base64) && (
-                      <div>
-                        <p className="text-sm text-neutral-400 mb-2 font-medium">AI annotated photo</p>
-                        <img
-                          src={complaint.annotated_image_url || `data:image/jpeg;base64,${complaint.annotated_image_base64}`}
-                          alt="AI detection annotations"
-                          className="w-full max-h-64 object-contain rounded-lg shadow-subtle"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Before / After resolution */}
-              {complaint.status === 'resolved' && complaint.resolved_image_url && (
-                <div>
-                  <h3 className="font-heading font-bold text-neutral-800 mb-2">Before &amp; After</h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-500 mb-2 uppercase tracking-wide">Before</p>
-                      {complaint.image_url ? (
-                        <img src={complaint.image_url} alt="Before resolution" className="w-full max-h-64 object-contain rounded-lg shadow-subtle" />
-                      ) : (
-                        <div className="flex h-40 items-center justify-center rounded-lg bg-neutral-50 border border-neutral-100 text-sm text-neutral-400">
-                          No original photo available
-                        </div>
+                {(complaint.image_url || complaint.annotated_image_url || complaint.annotated_image_base64) && (
+                  <section>
+                    <h2 className="label">{t('track_image_comparison')}</h2>
+                    <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                      {complaint.image_url && (
+                        <figure>
+                          <img src={complaint.image_url} alt={t('track_original_photo')} className="max-h-72 w-full border border-neutral-200 bg-neutral-50 object-contain" />
+                          <figcaption className="mt-1.5 text-[13px] text-neutral-500">{t('track_original_photo')}</figcaption>
+                        </figure>
+                      )}
+                      {(complaint.annotated_image_url || complaint.annotated_image_base64) && (
+                        <figure>
+                          <img
+                            src={complaint.annotated_image_url || `data:image/jpeg;base64,${complaint.annotated_image_base64}`}
+                            alt={t('track_annotated_photo')}
+                            className="max-h-72 w-full border border-neutral-200 bg-neutral-50 object-contain"
+                          />
+                          <figcaption className="mt-1.5 text-[13px] text-neutral-500">{t('track_annotated_photo')}</figcaption>
+                        </figure>
                       )}
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-success mb-2 uppercase tracking-wide">After</p>
-                      <img src={complaint.resolved_image_url} alt="After resolution" className="w-full max-h-64 object-contain rounded-lg shadow-subtle" />
+                  </section>
+                )}
+
+                {complaint.status === 'resolved' && complaint.resolved_image_url && (
+                  <section>
+                    <h2 className="label">{t('track_before_after')}</h2>
+                    <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                      <figure>
+                        {complaint.image_url ? (
+                          <img src={complaint.image_url} alt={t('track_before')} className="max-h-72 w-full border border-neutral-200 bg-neutral-50 object-contain" />
+                        ) : (
+                          <div className="flex h-40 items-center justify-center border border-neutral-200 bg-neutral-50 text-sm text-neutral-500">
+                            {t('track_no_original')}
+                          </div>
+                        )}
+                        <figcaption className="mt-1.5 text-[13px] font-semibold text-neutral-600">{t('track_before')}</figcaption>
+                      </figure>
+                      <figure>
+                        <img src={complaint.resolved_image_url} alt={t('track_after')} className="max-h-72 w-full border border-neutral-200 bg-neutral-50 object-contain" />
+                        <figcaption className="mt-1.5 text-[13px] font-semibold text-success-700">{t('track_after')}</figcaption>
+                      </figure>
                     </div>
-                  </div>
-                </div>
-              )}
+                  </section>
+                )}
+              </div>
+
+              {/* Status timeline */}
+              <aside className="border-t border-neutral-200 p-5 sm:p-6 lg:col-span-4 lg:border-s lg:border-t-0">
+                <h2 className="label">{t('track_status_timeline')}</h2>
+                <ol className="relative mt-4 space-y-5 border-s border-neutral-300 ps-5">
+                  <li className="relative">
+                    <span className="absolute -start-[25px] top-1.5 h-2.5 w-2.5 rounded-full bg-neutral-900" aria-hidden="true" />
+                    <p className="font-semibold text-neutral-900">{t('track_submitted')}</p>
+                    <p className="text-sm text-neutral-500 tnum">{date(complaint.submitted_at)}</p>
+                  </li>
+                  {complaint.status_history?.map((history, idx) => (
+                    <li key={idx} className="relative">
+                      <span className="absolute -start-[25px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-neutral-900 bg-white" aria-hidden="true" />
+                      <p className="font-semibold text-neutral-900">{tv('status', history.status)}</p>
+                      <p className="text-sm text-neutral-500 tnum">{date(history.timestamp)}</p>
+                      {history.notes && <p className="mt-1 text-sm text-neutral-700">{history.notes}</p>}
+                    </li>
+                  ))}
+                  {complaint.status === 'resolved' && (
+                    <li className="relative">
+                      <span className="absolute -start-[25px] top-1.5 h-2.5 w-2.5 rounded-full bg-success" aria-hidden="true" />
+                      <p className="font-semibold text-success-700">{t('status_resolved')}</p>
+                    </li>
+                  )}
+                </ol>
+              </aside>
             </div>
-          </Card>
+          </article>
         )}
-      </div>
+      </main>
       <Footer />
     </>
   )
