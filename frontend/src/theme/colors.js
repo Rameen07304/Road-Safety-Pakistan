@@ -8,7 +8,8 @@
  *
  * The system reads like a city survey sheet:
  * - `neutral` is a cool ink scale on a near-white survey ground (50).
- * - `primary` is survey blue and is reserved for things you can press.
+ * - `primary` is road-sign green (the same as `sign`), reserved for things
+ *   you can press, so the whole site reads in one colour.
  * - `sign` is road-sign green, used only on the bilingual page-title band.
  * - `urgency` is the map legend; each level also has a shape (UrgencyMark).
  *
@@ -17,17 +18,17 @@
  */
 
 export const primary = {
-  50: '#eef3f9',
-  100: '#d6e2f0',
-  200: '#adc5e2',
-  300: '#7fa3cf',
-  400: '#4f7fba',
-  500: '#1d5fa6',
-  600: '#184f8c',
-  700: '#143f70',
-  800: '#0f3157',
-  900: '#0b2440',
-  DEFAULT: '#1d5fa6',
+  50: '#ecf5ef',
+  100: '#d2e8da',
+  200: '#a6d1b6',
+  300: '#72b48d',
+  400: '#3d9365',
+  500: '#0b6b3a',
+  600: '#095a31',
+  700: '#074a28',
+  800: '#053a1f',
+  900: '#032a16',
+  DEFAULT: '#0b6b3a',
 }
 
 export const sign = {
@@ -49,10 +50,12 @@ export const neutral = {
   900: '#16191c',
 }
 
+// Traffic-light order so the meaning is guessable without reading:
+// red = very dangerous, orange, yellow, green = minor.
 export const urgency = {
-  low: '#2b7a78',
-  medium: '#b7791f',
-  high: '#c2410c',
+  low: '#2e7d32',
+  medium: '#e0a400',
+  high: '#ea580c',
   critical: '#c62828',
 }
 

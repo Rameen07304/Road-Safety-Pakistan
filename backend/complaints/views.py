@@ -1,11 +1,14 @@
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 import cv2
+import hashlib
 import io
 import logging
 import numpy as np
 import requests
 
+from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -20,7 +23,7 @@ from django.db.models import Count, Q
 
 from django.db import IntegrityError, models
 
-from .models import Complaint, ComplaintCluster, ComplaintStatusHistory, ComplaintUpvote, haversine_meters
+from .models import Complaint, ComplaintCluster, ComplaintStatusHistory, ComplaintUpvote, haversine_meters, public_complaints
 from .serializers import (
     ComplaintDetailSerializer,
     ComplaintListSerializer,
@@ -228,6 +231,10 @@ def _apply_cluster_urgency_bonus(complaint, linked_count):
     complaint.save(update_fields=["urgency_score"])
 
 
+def _analysis_cache_key(image_url):
+    return "analysis:" + hashlib.sha256(image_url.encode()).hexdigest()
+
+
 class ComplaintSubmitView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -238,7 +245,9 @@ class ComplaintSubmitView(APIView):
 
         image_url = serializer.validated_data["image_url"]
         description = serializer.validated_data["description"]
-        analysis = analyze_image(image_url)
+        # The upload step already ran detection on this exact file (about 25 s
+        # on the Hugging Face Space); only run it again if that result is gone.
+        analysis = cache.get(_analysis_cache_key(image_url)) or analyze_image(image_url)
         annotated_image_url = _upload_annotated_image(
             analysis.get("annotated_image_base64")
         )
@@ -248,6 +257,15 @@ class ComplaintSubmitView(APIView):
         # --- Spam / fake detection ---
         img_hash = _perceptual_image_hash(image_url)
         should_flag, flag_reason = _check_spam_flags(request.user, img_hash)
+
+        # Nothing recognised in the photo: accept the report, but keep it off
+        # the public map until an admin has looked at it. The citizen was told
+        # before sending; this is the rule, not the page.
+        if not analysis.get("detected_classes"):
+            reason = ("Automatic photo check unavailable" if analysis.get("error")
+                      else "No road problem recognised in the photo")
+            should_flag = True
+            flag_reason = f"{flag_reason}; {reason}" if flag_reason else reason
 
         with transaction.atomic():
             complaint = Complaint.objects.create(
@@ -319,15 +337,21 @@ class UploadImageView(APIView):
             file.seek(0)
 
             # --- Image quality gate ---
-            image_for_quality = Image.open(file)
-            quality_error = _check_image_quality(image_for_quality)
+            # exif_transpose: phones store "rotate me" in EXIF instead of
+            # rotating the pixels; apply it before the metadata is dropped.
+            photo = ImageOps.exif_transpose(Image.open(file)).convert("RGB")
+            quality_error = _check_image_quality(photo)
             if quality_error:
                 return Response({'detail': quality_error}, status=status.HTTP_400_BAD_REQUEST)
 
-            # PIL reads pixels lazily, so the quality check above consumes the
-            # stream; rewind or Cloudinary receives an empty file.
-            file.seek(0)
-            res = cloudinary.uploader.upload(file, folder='complaints')
+            # Photos are public, so upload a re-encoded copy: this drops EXIF
+            # (GPS position of the phone, device model, time taken) and caps
+            # the size, which also keeps pages light on mobile data.
+            photo.thumbnail((2048, 2048))
+            clean = io.BytesIO()
+            photo.save(clean, format="JPEG", quality=88, optimize=True)
+            clean.seek(0)
+            res = cloudinary.uploader.upload(clean, folder='complaints')
             url = res.get('secure_url') or res.get('url')
             if not url:
                 return Response({'detail': 'Image upload returned no URL.'}, status=status.HTTP_502_BAD_GATEWAY)
@@ -335,10 +359,15 @@ class UploadImageView(APIView):
             # Run early detection so the frontend can show a description suggestion
             analysis = analyze_image(url)
             detected_classes = analysis.get('detected_classes', [])
+            if not analysis.get('error'):
+                cache.set(_analysis_cache_key(url), analysis, 60 * 60)
 
             return Response({
                 'image_url': url,
                 'detected_classes': detected_classes,
+                # False when the detection service could not be reached, so
+                # the page does not claim "nothing found" when it never looked.
+                'detection_available': not analysis.get('error'),
             }, status=status.HTTP_201_CREATED)
         except UnidentifiedImageError:
             return Response({'detail': 'The uploaded file is not a valid image.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -347,16 +376,28 @@ class UploadImageView(APIView):
             return Response({'detail': 'Failed to upload image.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+def status_counts(queryset):
+    """Counts per stage. "pending" is received or checked but not yet being
+    fixed; rejected complaints are counted on their own, never as pending."""
+    return queryset.aggregate(
+        total=Count("id"),
+        pending=Count("id", filter=Q(status__in=["submitted", "verified"])),
+        in_progress=Count("id", filter=Q(status="in_progress")),
+        resolved=Count("id", filter=Q(status="resolved")),
+        rejected=Count("id", filter=Q(status="rejected")),
+        critical=Count("id", filter=Q(urgency_level="critical") & ~Q(status__in=["resolved", "rejected"])),
+        flagged=Count("id", filter=Q(flagged=True)),
+    )
+
+
 class ComplaintListView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        queryset = Complaint.objects.all()
-
-        # Non-admin users should not see flagged complaints
+        # Admins list everything (their dashboard has a Not accepted tab);
+        # everyone else gets the public set, as on the map.
         is_admin = request.user.is_authenticated and getattr(request.user, "role", None) == "admin"
-        if not is_admin:
-            queryset = queryset.filter(flagged=False)
+        queryset = Complaint.objects.all() if is_admin else public_complaints()
         status_filter = request.query_params.get("status")
         urgency_filter = request.query_params.get("urgency_level")
         ward_filter = request.query_params.get("ward")
@@ -364,7 +405,7 @@ class ComplaintListView(APIView):
         ordering = request.query_params.get("ordering")
 
         if status_filter:
-            queryset = queryset.filter(status=status_filter)
+            queryset = queryset.filter(status__in=status_filter.split(","))
         if urgency_filter:
             queryset = queryset.filter(urgency_level=urgency_filter)
         if ward_filter:
@@ -394,12 +435,10 @@ class ComplaintMapView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        complaints = Complaint.objects.all()
-
-        # Non-admin users should not see flagged complaints on the map
+        # Everyone sees the public set. Admins also see reports waiting for
+        # review, to judge the location; rejected ones are off the map for all.
         is_admin = request.user.is_authenticated and getattr(request.user, "role", None) == "admin"
-        if not is_admin:
-            complaints = complaints.filter(flagged=False)
+        complaints = Complaint.objects.exclude(status="rejected") if is_admin else public_complaints()
         data = []
         for complaint in complaints:
             linked_count = complaint.cluster.complaints.count() if complaint.cluster else 0
@@ -414,6 +453,8 @@ class ComplaintMapView(APIView):
                     "address": complaint.address,
                     "ward": complaint.ward,
                     "description": complaint.description,
+                    "image_url": complaint.image_url,
+                    "resolved_image_url": complaint.resolved_image_url if complaint.status == "resolved" else None,
                     "urgency_level": complaint.urgency_level,
                     "urgency_score": complaint.urgency_score,
                     "color": URGENCY_PIN_COLORS.get(complaint.urgency_level, "#2563EB"),
@@ -457,7 +498,16 @@ class ComplaintTrackView(APIView):
                 phone = query
 
         if complaint_id:
-            complaint = _get_visible_complaint(request, complaint_id)
+            complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+            if complaint.flagged and not can_view_private(request, complaint):
+                # Held for review: confirm the number exists (the reporter was
+                # told to keep it) but show nothing else until it is approved.
+                return Response({
+                    "complaint_id": complaint.complaint_id,
+                    "submitted_at": complaint.submitted_at,
+                    "status": complaint.status,
+                    "under_review": True,
+                }, status=status.HTTP_200_OK)
             serializer = ComplaintDetailSerializer(complaint, context={"request": request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -497,15 +547,7 @@ class MyDashboardView(APIView):
     def get(self, request):
         complaints = Complaint.objects.filter(citizen=request.user)
 
-        stats = complaints.aggregate(
-            total=Count("id"),
-            resolved=Count("id", filter=Q(status="resolved")),
-            in_progress=Count("id", filter=Q(status="in_progress")),
-            pending=Count(
-                "id",
-                filter=~Q(status__in=["resolved", "in_progress"]),
-            ),
-        )
+        stats = status_counts(complaints)
 
         most_recent = complaints.order_by("-submitted_at").first()
         most_recent_data = (
@@ -603,6 +645,65 @@ class ComplaintUpvoteView(APIView):
             {"complaint_id": complaint.complaint_id, "upvotes": complaint.upvotes, "has_upvoted": False},
             status=status.HTTP_200_OK,
         )
+
+
+class AdminComplaintDeleteView(APIView):
+    """Permanently delete a complaint (abusive photo, personal data, test
+    junk). Rejecting is the normal tool; it keeps the record."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def delete(self, request, complaint_id):
+        complaint = get_object_or_404(Complaint, complaint_id=complaint_id)
+        cluster = complaint.cluster
+        images = {complaint.image_url, complaint.annotated_image_url, complaint.resolved_image_url} - {None, ""}
+        logger.info("Complaint %s deleted by %s", complaint_id, request.user.pk)
+        complaint.delete()
+        # A cluster with no reports left would only clutter the admin.
+        if cluster and not cluster.complaints.exists():
+            cluster.delete()
+        # The photos go too, unless another complaint still shows the same file.
+        still_used = Q(image_url__in=images) | Q(annotated_image_url__in=images) | Q(resolved_image_url__in=images)
+        in_use = set(Complaint.objects.filter(still_used).values_list("image_url", "annotated_image_url", "resolved_image_url").distinct())
+        in_use = {url for row in in_use for url in row}
+        transaction.on_commit(lambda: _destroy_cloudinary_images(images - in_use))
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def cloudinary_public_id(url):
+    """https://res.cloudinary.com/<cloud>/image/upload/v123/complaints/abc.jpg
+    -> "complaints/abc". None for anything not in this project's account."""
+    prefix = f"https://res.cloudinary.com/{settings.CLOUDINARY_CLOUD_NAME}/image/upload/"
+    if not settings.CLOUDINARY_CLOUD_NAME or not str(url).startswith(prefix):
+        return None
+    parts = url[len(prefix):].split("?")[0].split("/")
+    # The public id is everything after the version segment (v1712345678).
+    versions = [i for i, p in enumerate(parts) if p[:1] == "v" and p[1:].isdigit()]
+    if versions:
+        parts = parts[versions[0] + 1:]
+    path = "/".join(parts)
+    return path.rsplit(".", 1)[0] if "." in parts[-1] else path
+
+
+def _destroy_cloudinary_images(urls):
+    # Best effort: the complaint is already gone; a failure here only leaves
+    # an orphaned file, which is logged rather than reported to the admin.
+    for url in urls:
+        public_id = cloudinary_public_id(url)
+        if not public_id:
+            continue
+        try:
+            cloudinary.uploader.destroy(public_id, invalidate=True)
+        except Exception:
+            logger.warning("Could not delete Cloudinary image %s", public_id, exc_info=True)
+
+
+class AdminComplaintStatsView(APIView):
+    """Counts over every complaint; the list endpoint is paginated, so the
+    dashboard cannot count from it."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request):
+        return Response(status_counts(Complaint.objects.all()))
 
 
 # ---------- Admin flagged-complaint review queue ----------

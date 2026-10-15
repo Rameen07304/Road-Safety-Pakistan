@@ -84,6 +84,7 @@ export default function Dashboard() {
                 { label: t('dash_pending'), value: stats.pending },
                 { label: t('dash_in_progress'), value: stats.in_progress },
                 { label: t('dash_resolved'), value: stats.resolved },
+                { label: t('dash_rejected'), value: stats.rejected ?? 0 },
               ]}
             />
 
@@ -96,10 +97,13 @@ export default function Dashboard() {
                     aria-label={t('common_open_complaint', { id: recent.complaint_id })}
                     className="block border border-neutral-200 bg-white p-5 transition-colors hover:border-neutral-400"
                   >
+                    {recent.image_url && (
+                      <img src={recent.image_url} alt={tvList('hazard', recent.detected_classes) || t('dash_hazard_report')} className="mb-4 h-44 w-full border border-neutral-200 bg-neutral-100 object-cover" />
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <span className="font-semibold tnum" dir="ltr">{recent.complaint_id}</span>
                       <Badge variant={recent.urgency_level?.toLowerCase()}>
-                        {tv('urgency', recent.urgency_level)} <span className="font-normal text-neutral-500 tnum">{recent.urgency_score}/100</span>
+                        {tv('urgency', recent.urgency_level)}
                       </Badge>
                     </div>
                     <p className="mt-3 text-[15px] text-neutral-800">

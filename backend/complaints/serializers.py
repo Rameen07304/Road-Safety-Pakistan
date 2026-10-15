@@ -118,6 +118,7 @@ class ComplaintListSerializer(serializers.ModelSerializer):
         model = Complaint
         fields = [
             "complaint_id",
+            "description",
             "detected_classes",
             "urgency_level",
             "urgency_score",
@@ -166,6 +167,7 @@ class ComplaintListSerializer(serializers.ModelSerializer):
 class ComplaintDetailSerializer(serializers.ModelSerializer):
     status_history = StatusHistorySerializer(many=True, read_only=True)
     citizen_name = serializers.SerializerMethodField()
+    reporter = serializers.SerializerMethodField()
     resolution_time_days = serializers.SerializerMethodField()
     annotated_image_base64 = serializers.SerializerMethodField()
     has_upvoted = serializers.SerializerMethodField()
@@ -179,6 +181,7 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
         fields = [
             "complaint_id",
             "citizen_name",
+            "reporter",
             "image_url",
             "description",
             "latitude",
@@ -218,6 +221,25 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
 
     def get_citizen_name(self, obj):
         return obj.citizen.full_name if obj.citizen else None
+
+    def get_reporter(self, obj):
+        """Admins only: who reported this and their track record, to decide
+        on blocking from evidence rather than one report."""
+        request = self.context.get("request")
+        if not obj.citizen or getattr(getattr(request, "user", None), "role", None) != "admin":
+            return None
+        u = obj.citizen
+        mine = Complaint.objects.filter(citizen=u)
+        return {
+            "id": str(u.pk),
+            "email": u.email,
+            "phone": u.phone,
+            "role": u.role,
+            "is_active": u.is_active,
+            "blocked_reason": u.blocked_reason,
+            "total_reports": mine.count(),
+            "rejected_reports": mine.filter(status="rejected").count(),
+        }
 
     def to_representation(self, obj):
         data = super().to_representation(obj)

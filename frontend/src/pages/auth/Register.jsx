@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../services/api'
@@ -27,7 +27,6 @@ export default function Register() {
   const [error, setError] = useState('')
   const [formErrors, setFormErrors] = useState({})
   const [toast, setToast] = useState(null)
-  const navigate = useNavigate()
   const { login } = useAuth()
   const { t } = useLanguage()
 
@@ -109,13 +108,8 @@ export default function Register() {
       })
 
       const { user, tokens } = response.data
+      // GuestRoute (App.jsx) takes the new citizen to their dashboard.
       login(user, tokens)
-      
-      setToast({ message: t('register_success'), type: 'success' })
-      setFormErrors({})
-      setTimeout(() => {
-        navigate('/report')
-      }, 1500)
     } catch (err) {
       const data = err.response?.data
       

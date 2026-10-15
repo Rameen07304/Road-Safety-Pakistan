@@ -6,10 +6,14 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+
+from .permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError as DRFValidationError
@@ -70,6 +74,47 @@ def _end_all_sessions(user):
         BlacklistedToken.objects.get_or_create(token=token)
 
 
+class BlockUserView(APIView):
+    """Admin blocks (POST) or unblocks (DELETE) a citizen account.
+
+    Blocking deactivates the account and revokes every session, so the person
+    is signed out everywhere at once. Their complaints are kept for review.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def _target(self, request, user_id):
+        user = get_object_or_404(User, pk=user_id)
+        if user == request.user or user.role == "admin":
+            return None, Response({"detail": "Admin accounts cannot be blocked here."}, status=status.HTTP_400_BAD_REQUEST)
+        return user, None
+
+    def post(self, request, user_id):
+        user, error = self._target(request, user_id)
+        if error:
+            return error
+        reason = str(request.data.get("reason", "")).strip()[:255]
+        if not reason:
+            return Response({"reason": ["Give a reason for blocking."]}, status=status.HTTP_400_BAD_REQUEST)
+        user.is_active = False
+        user.blocked_reason = reason
+        user.blocked_at = timezone.now()
+        user.save(update_fields=["is_active", "blocked_reason", "blocked_at"])
+        _end_all_sessions(user)
+        logger.info("User %s blocked by %s: %s", user.pk, request.user.pk, reason)
+        return Response({"id": str(user.pk), "is_active": False, "blocked_reason": reason})
+
+    def delete(self, request, user_id):
+        user, error = self._target(request, user_id)
+        if error:
+            return error
+        user.is_active = True
+        user.blocked_reason = ""
+        user.blocked_at = None
+        user.save(update_fields=["is_active", "blocked_reason", "blocked_at"])
+        logger.info("User %s unblocked by %s", user.pk, request.user.pk)
+        return Response({"id": str(user.pk), "is_active": True})
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "auth"
@@ -104,10 +149,15 @@ class LoginView(APIView):
         if not user:
             user = User.objects.filter(phone=email_or_phone).first()
 
-        if not user or not user.is_active or not user.check_password(password):
+        if not user or not user.check_password(password):
             return Response(
                 {"detail": "Invalid credentials."},
                 status=status.HTTP_401_UNAUTHORIZED,
+            )
+        if not user.is_active:
+            return Response(
+                {"detail": "This account has been blocked.", "code": "account_blocked"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         return _session_response(

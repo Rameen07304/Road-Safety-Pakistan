@@ -11,9 +11,11 @@ export default function Header() {
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  // Leave the page first: on a signed-in-only page, clearing the user would
+  // otherwise make its guard bounce to /login before this redirect ran.
   const handleLogout = async () => {
+    navigate('/', { replace: true })
     await logout()
-    navigate('/')
   }
 
   // One list drives both the desktop bar and the mobile menu.
@@ -37,7 +39,7 @@ export default function Header() {
       : []),
   ]
 
-  // Active page: a survey-blue rule under the link, not a colour change alone.
+  // Active page: a green rule under the link, not a colour change alone.
   const desktopLink = ({ isActive }) =>
     `relative flex h-16 items-center text-sm transition-colors ${
       isActive

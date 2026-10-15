@@ -5,7 +5,7 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Badge, Button, Alert, PageTitle } from '../../components/UI'
 import Toast from '../../components/Toast'
-import { Loader2, ArrowLeft, CheckCircle2, X, AlertTriangle, Eye } from 'lucide-react'
+import { Loader2, ArrowLeft, CheckCircle2, X, AlertTriangle, Eye, Trash2 } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
 import { useLanguage } from '../../context/LanguageContext'
 
@@ -19,6 +19,11 @@ export default function FlaggedQueue() {
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
+  // Reject asks again on the page itself: window.confirm() is suppressed by
+  // embedded and in-app browsers, which made Reject silently do nothing.
+  const [confirmingReject, setConfirmingReject] = useState(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const navigate = useNavigate()
 
   const fetchFlagged = async () => {
@@ -51,9 +56,7 @@ export default function FlaggedQueue() {
   }
 
   const handleReject = async (complaintId) => {
-    if (!window.confirm(t('fq_reject_confirm', { id: complaintId }))) {
-      return
-    }
+    setConfirmingReject(null)
     setActionLoading(complaintId)
     try {
       await complaintService.rejectComplaint(complaintId)
@@ -63,6 +66,21 @@ export default function FlaggedQueue() {
       setToast({ message: t('fq_reject_failed'), type: 'error' })
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  // Permanent: removes the complaint and its photos (see AdminComplaintDeleteView).
+  const handleDelete = async (complaintId) => {
+    setDeletingId(complaintId)
+    try {
+      await complaintService.deleteComplaint(complaintId)
+      setFlagged((prev) => prev.filter((c) => c.complaint_id !== complaintId))
+      setToast({ message: t('admin_deleted', { id: complaintId }), type: 'success' })
+    } catch {
+      setToast({ message: t('cd_action_failed'), type: 'error' })
+    } finally {
+      setDeletingId(null)
+      setConfirmingDelete(null)
     }
   }
 
@@ -100,7 +118,9 @@ export default function FlaggedQueue() {
             {flagged.map(c => (
               <li key={c.complaint_id} className="flex flex-col gap-4 border-t border-neutral-200 p-4 first:border-t-0 sm:flex-row sm:items-start sm:p-5">
                 {c.image_url && (
-                  <img src={c.image_url} alt={c.complaint_id} className="h-24 w-24 shrink-0 border border-neutral-200 object-cover" />
+                  <a href={c.image_url} target="_blank" rel="noreferrer" className="shrink-0" title={t('admin_open_photo')}>
+                    <img src={c.image_url} alt={c.complaint_id} className="h-32 w-full border border-neutral-200 object-cover sm:w-32" />
+                  </a>
                 )}
 
                 <div className="min-w-0 flex-1">
@@ -109,8 +129,8 @@ export default function FlaggedQueue() {
                     <Badge variant="accent">{t('fq_flagged')}</Badge>
                     <Badge variant={c.urgency_level?.toLowerCase()}>{tv('urgency', c.urgency_level)}</Badge>
                   </div>
-                  <p className="mt-1.5 truncate text-[15px] text-neutral-800" title={c.summary}>
-                    {c.summary || t('fq_no_summary')}
+                  <p className="mt-1.5 line-clamp-2 text-[15px] text-neutral-800">
+                    {c.description || t('fq_no_summary')}
                   </p>
                   {c.flag_reason && (
                     <p className="mt-2 flex items-start gap-2 text-sm text-accent-dark">
@@ -123,17 +143,38 @@ export default function FlaggedQueue() {
                   </p>
                 </div>
 
-                <div className="flex shrink-0 gap-2 sm:flex-col">
-                  <Button size="sm" onClick={() => handleApprove(c.complaint_id)} loading={actionLoading === c.complaint_id} className="flex-1 sm:w-28 sm:flex-none">
-                    {actionLoading !== c.complaint_id && <CheckCircle2 size={14} aria-hidden="true" />} {t('fq_approve')}
-                  </Button>
-                  <Button size="sm" variant="danger" onClick={() => handleReject(c.complaint_id)} loading={actionLoading === c.complaint_id} className="flex-1 sm:w-28 sm:flex-none">
-                    {actionLoading !== c.complaint_id && <X size={14} aria-hidden="true" />} {t('fq_reject')}
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/complaint/${c.complaint_id}`)} className="flex-1 sm:w-28 sm:flex-none">
-                    <Eye size={14} aria-hidden="true" /> {t('common_view')}
-                  </Button>
-                </div>
+                {confirmingDelete === c.complaint_id ? (
+                  <div className="flex shrink-0 flex-col gap-2 sm:w-40">
+                    <p className="text-sm font-semibold text-danger-700">{t('cd_delete_confirm', { id: c.complaint_id })}</p>
+                    <Button variant="danger" loading={deletingId === c.complaint_id} onClick={() => handleDelete(c.complaint_id)}>
+                      {deletingId !== c.complaint_id && <Trash2 size={16} aria-hidden="true" />} {t('cd_delete_yes')}
+                    </Button>
+                    <Button variant="secondary" onClick={() => setConfirmingDelete(null)}>{t('common_cancel')}</Button>
+                  </div>
+                ) : confirmingReject === c.complaint_id ? (
+                  <div className="flex shrink-0 flex-col gap-2 sm:w-40" role="group" aria-label={t('fq_reject_confirm', { id: c.complaint_id })}>
+                    <p className="text-sm font-semibold text-danger-700">{t('fq_reject_confirm', { id: c.complaint_id })}</p>
+                    <Button variant="danger" onClick={() => handleReject(c.complaint_id)}>
+                      <X size={16} aria-hidden="true" /> {t('fq_reject_yes')}
+                    </Button>
+                    <Button variant="secondary" onClick={() => setConfirmingReject(null)}>{t('common_cancel')}</Button>
+                  </div>
+                ) : (
+                  <div className="flex shrink-0 gap-2 sm:w-32 sm:flex-col">
+                    <Button onClick={() => handleApprove(c.complaint_id)} loading={actionLoading === c.complaint_id} className="flex-1 sm:flex-none">
+                      {actionLoading !== c.complaint_id && <CheckCircle2 size={16} aria-hidden="true" />} {t('fq_approve')}
+                    </Button>
+                    <Button variant="danger" onClick={() => setConfirmingReject(c.complaint_id)} disabled={actionLoading === c.complaint_id} className="flex-1 sm:flex-none">
+                      <X size={16} aria-hidden="true" /> {t('fq_reject')}
+                    </Button>
+                    <Button variant="secondary" onClick={() => navigate(`/admin/complaint/${c.complaint_id}`)} className="flex-1 sm:flex-none">
+                      <Eye size={16} aria-hidden="true" /> {t('common_view')}
+                    </Button>
+                    <Button variant="secondary" className="flex-1 !text-danger-700 sm:flex-none" onClick={() => { setConfirmingReject(null); setConfirmingDelete(c.complaint_id) }}>
+                      <Trash2 size={16} aria-hidden="true" /> {t('admin_delete')}
+                    </Button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

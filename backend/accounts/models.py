@@ -58,6 +58,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     passport_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="citizen")
     is_active = models.BooleanField(default=True)
+    # Set when an admin blocks the account (is_active=False) for abuse.
+    blocked_reason = models.CharField(max_length=255, blank=True)
+    blocked_at = models.DateTimeField(blank=True, null=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(blank=True, null=True)

@@ -207,7 +207,7 @@ export function BilingualHeading({ titleKey, subtitleKey }) {
  * sheet's margin table. Replaces stat cards.
  */
 export function StatStrip({ items, className = '' }) {
-  const cols = { 2: 'grid-cols-2', 3: 'grid-cols-2 sm:grid-cols-3', 4: 'grid-cols-2 lg:grid-cols-4', 5: 'grid-cols-2 lg:grid-cols-5' }[items.length] || 'grid-cols-2 lg:grid-cols-4'
+  const cols = { 2: 'grid-cols-2', 3: 'grid-cols-2 sm:grid-cols-3', 4: 'grid-cols-2 lg:grid-cols-4', 5: 'grid-cols-2 lg:grid-cols-5', 6: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' }[items.length] || 'grid-cols-2 lg:grid-cols-4'
   // An odd count in two columns would leave an empty hairline cell; the last
   // figure spans the row until the strip fits on one line.
   const lastSpan = { 3: 'col-span-2 sm:col-span-1', 5: 'col-span-2 lg:col-span-1' }[items.length] || ''

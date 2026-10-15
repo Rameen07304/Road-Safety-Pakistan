@@ -2,7 +2,7 @@ import math
 import uuid
 
 from django.conf import settings
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
 
@@ -167,16 +167,35 @@ class Complaint(models.Model):
     class Meta:
         ordering = ["-submitted_at"]
 
-    def save(self, *args, **kwargs):
-        if not self.complaint_id:
-            current_year = timezone.now().year
-            count = Complaint.objects.filter(submitted_at__year=current_year).count() + 1
-            self.complaint_id = f"RSP-{current_year}-{count:04d}"
+    @staticmethod
+    def next_complaint_id():
+        """Highest number this year + 1. Counting rows instead (the old way)
+        handed out a number still in use once any complaint had been deleted,
+        and the report then failed on the unique constraint."""
+        prefix = f"RSP-{timezone.now().year}-"
+        # ponytail: reads this year's ids to find the max; a counter table if
+        # yearly volume ever reaches hundreds of thousands.
+        taken = Complaint.objects.filter(complaint_id__startswith=prefix).values_list("complaint_id", flat=True)
+        highest = max((int(c[len(prefix):]) for c in taken if c[len(prefix):].isdigit()), default=0)
+        return f"{prefix}{highest + 1:04d}"
 
+    def save(self, *args, **kwargs):
         if self.status == "resolved" and not self.resolved_at:
             self.resolved_at = timezone.now()
 
-        super().save(*args, **kwargs)
+        if self.complaint_id:
+            return super().save(*args, **kwargs)
+
+        # Two reports sent at the same moment can pick the same number; the
+        # loser takes the next one instead of failing.
+        for attempt in range(5):
+            self.complaint_id = self.next_complaint_id()
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError:
+                if attempt == 4:
+                    raise
 
     @property
     def resolution_time_days(self):
@@ -230,3 +249,12 @@ class ComplaintUpvote(models.Model):
 
     def __str__(self):
         return f"{self.user_id} upvoted {self.complaint.complaint_id}"
+
+
+def public_complaints():
+    """Complaints the public sees: on the map and in every public count.
+
+    Turned down ("Not accepted") reports are not hazards, and flagged ones are
+    waiting for an admin, so both stay out. Deleted ones no longer exist.
+    """
+    return Complaint.objects.filter(flagged=False).exclude(status="rejected")

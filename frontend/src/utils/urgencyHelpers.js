@@ -26,6 +26,14 @@ export const urgencyMarkSvg = (level, size = 20) => {
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="display:block;filter:drop-shadow(0 1px 1.5px rgba(22,25,28,.35))"><g fill="${fill}" stroke="#fff" stroke-width="2" stroke-linejoin="miter">${MARK_SHAPES[key]}</g></svg>`
 }
 
+// A smaller copy of a Cloudinary photo (resized, compressed, modern format)
+// for thumbnails and cards: a phone photo is several MB, too much on mobile
+// data just to see the road. Other URLs are returned unchanged.
+export const sizedPhoto = (url, width) =>
+  url && url.includes('res.cloudinary.com/') && url.includes('/image/upload/')
+    ? url.replace('/image/upload/', `/image/upload/w_${width},c_limit,q_auto,f_auto/`)
+    : url
+
 // Status → Tailwind color classes
 export const statusClasses = {
   submitted:   'bg-neutral-100 text-neutral-700',

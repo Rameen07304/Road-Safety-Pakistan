@@ -130,6 +130,12 @@ export const complaintService = {
     API.post(`/api/admin/complaints/${id}/approve/`),
   rejectComplaint: (id) =>
     API.post(`/api/admin/complaints/${id}/reject/`),
+  deleteComplaint: (id) =>
+    API.delete(`/api/admin/complaints/${id}/`),
+  blockUser: (userId, reason) =>
+    API.post(`/api/admin/users/${userId}/block/`, { reason }),
+  unblockUser: (userId) =>
+    API.delete(`/api/admin/users/${userId}/block/`),
 }
 
 // Analytics service functions

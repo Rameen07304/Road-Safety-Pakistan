@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../services/api'
@@ -18,8 +18,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
-  const navigate = useNavigate()
-  const location = useLocation()
   const { login } = useAuth()
   const { t } = useLanguage()
 
@@ -34,15 +32,16 @@ export default function Login() {
         password,
       })
 
-      const { user, tokens, role } = response.data
+      const { user, tokens } = response.data
+      // GuestRoute (App.jsx) redirects as soon as the user is set: to the page
+      // that asked for login, or to the dashboard.
       login(user, tokens)
-
-      setToast({ message: t('login_success'), type: 'success' })
-      setTimeout(() => {
-        navigate(role === 'admin' ? '/admin/dashboard' : location.state?.from || '/')
-      }, 1500)
     } catch (err) {
-      const message = err.response?.data?.detail || t('login_failed')
+      // A blocked account is told so (in the UI language); other failures keep
+      // the server's message.
+      const message = err.response?.data?.code === 'account_blocked'
+        ? t('login_blocked')
+        : err.response?.data?.detail || t('login_failed')
       setError(message)
       setToast({ message, type: 'error' })
     } finally {

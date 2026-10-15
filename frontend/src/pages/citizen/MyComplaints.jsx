@@ -35,13 +35,13 @@ export default function MyComplaints() {
 
   const filteredComplaints = complaints.filter(c => {
     if (filter === 'all') return true
-    if (filter === 'pending') return c.status !== 'resolved'
+    if (filter === 'pending') return !['resolved', 'rejected'].includes(c.status)
     return c.status === filter
   })
 
   const filters = [
     { id: 'all', label: t('common_all'), count: complaints.length },
-    { id: 'pending', label: t('status_pending'), count: complaints.filter(c => c.status !== 'resolved').length },
+    { id: 'pending', label: t('status_pending'), count: complaints.filter(c => !['resolved', 'rejected'].includes(c.status)).length },
     { id: 'resolved', label: t('status_resolved'), count: complaints.filter(c => c.status === 'resolved').length },
   ]
 
@@ -83,7 +83,13 @@ export default function MyComplaints() {
           <ul className="border-b border-neutral-200 bg-white">
             {filteredComplaints.map(complaint => (
               <li key={complaint.complaint_id} className="flex gap-4 border-t border-neutral-200 px-4 py-4 first:border-t-0 sm:px-5">
-                <UrgencyMark level={complaint.urgency_level} size={12} className="mt-1.5" />
+                {complaint.image_url ? (
+                  <Link to={`/complaint/${complaint.complaint_id}`} className="shrink-0" tabIndex={-1} aria-hidden="true">
+                    <img src={complaint.image_url} alt="" className="h-20 w-20 border border-neutral-200 bg-neutral-100 object-cover sm:h-24 sm:w-24" />
+                  </Link>
+                ) : (
+                  <UrgencyMark level={complaint.urgency_level} size={12} className="mt-1.5" />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <Link
@@ -94,8 +100,9 @@ export default function MyComplaints() {
                     >
                       {complaint.complaint_id}
                     </Link>
-                    <span className="text-sm text-neutral-600">
-                      {tv('urgency', complaint.urgency_level)} · <span className="tnum">{t('mc_score', { n: complaint.urgency_score })}</span>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-neutral-800">
+                      <UrgencyMark level={complaint.urgency_level} size={12} />
+                      {tv('urgency', complaint.urgency_level)}
                     </span>
                   </div>
                   <p className="mt-1 line-clamp-2 text-[15px] text-neutral-800">{complaint.description}</p>

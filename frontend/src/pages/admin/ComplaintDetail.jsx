@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { api, complaintService } from '../../services/api'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import { Badge, Button, Alert, PageTitle, UrgencyMark, FormField } from '../../components/UI'
 import { statusClasses } from '../../utils/urgencyHelpers'
 import Toast from '../../components/Toast'
-import { Loader2, ArrowLeft, Camera, CheckCircle2 } from 'lucide-react'
+import CameraCapture from '../../components/CameraCapture'
+import { Loader2, ArrowLeft, Camera, CheckCircle2, ImagePlus, Ban, Trash2 } from 'lucide-react'
 import useDocumentTitle from '../../hooks/useDocumentTitle'
 import { useLanguage } from '../../context/LanguageContext'
 
@@ -28,6 +29,16 @@ export default function ComplaintDetail() {
   const [uploadingResolved, setUploadingResolved] = useState(false)
   const [resolvedUploadError, setResolvedUploadError] = useState('')
   const resolvedFileInputRef = useRef(null)
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [blockOpen, setBlockOpen] = useState(false)
+  const [blockReason, setBlockReason] = useState('')
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [moderating, setModerating] = useState(null)
+  const navigate = useNavigate()
+  const cameraUnavailable = useCallback(() => {
+    setCameraOpen(false)
+    setResolvedUploadError(t('camera_unavailable'))
+  }, [t])
 
   const fetchComplaint = async () => {
     try {
@@ -108,6 +119,47 @@ export default function ComplaintDetail() {
       setToast({ message: t('cd_update_failed'), type: 'error' })
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const reporter = complaint?.reporter
+
+  const handleBlock = async () => {
+    setModerating('block')
+    try {
+      const res = await complaintService.blockUser(reporter.id, blockReason.trim())
+      setComplaint((prev) => ({ ...prev, reporter: { ...prev.reporter, is_active: false, blocked_reason: res.data.blocked_reason } }))
+      setBlockOpen(false)
+      setBlockReason('')
+      setToast({ message: t('cd_block_done'), type: 'success' })
+    } catch {
+      setToast({ message: t('cd_action_failed'), type: 'error' })
+    } finally {
+      setModerating(null)
+    }
+  }
+
+  const handleUnblock = async () => {
+    setModerating('unblock')
+    try {
+      await complaintService.unblockUser(reporter.id)
+      setComplaint((prev) => ({ ...prev, reporter: { ...prev.reporter, is_active: true, blocked_reason: '' } }))
+      setToast({ message: t('cd_unblock_done'), type: 'success' })
+    } catch {
+      setToast({ message: t('cd_action_failed'), type: 'error' })
+    } finally {
+      setModerating(null)
+    }
+  }
+
+  const handleDelete = async () => {
+    setModerating('delete')
+    try {
+      await complaintService.deleteComplaint(complaint.complaint_id)
+      navigate('/admin/dashboard', { replace: true })
+    } catch {
+      setToast({ message: t('cd_action_failed'), type: 'error' })
+      setModerating(null)
     }
   }
 
@@ -291,22 +343,28 @@ export default function ComplaintDetail() {
                         <img src={complaint.resolved_image_url} alt={t('track_after')} className="h-24 border border-neutral-200 object-cover" />
                       </div>
                     )}
-                    {resolvedPreview ? (
+                    {resolvedPreview && (
                       <div className="mt-2">
                         <img src={resolvedPreview} alt={t('track_after')} className="h-24 border border-neutral-200 object-cover" />
                         <p className="mt-1 flex items-center gap-1 text-[13px] font-semibold text-success-700">
                           <CheckCircle2 size={12} aria-hidden="true" /> {t('common_photo_selected')}
                         </p>
                       </div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="mt-2 flex w-full flex-col items-center gap-1 border-2 border-dashed border-neutral-300 bg-white p-4 text-sm text-neutral-600 transition-colors hover:border-neutral-500"
-                        onClick={() => resolvedFileInputRef.current?.click()}
-                      >
-                        <Camera size={20} className="text-neutral-500" aria-hidden="true" />
-                        {t('cd_select_after')}
-                      </button>
+                    )}
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <Button variant="secondary" onClick={() => (navigator.mediaDevices?.getUserMedia ? setCameraOpen(true) : resolvedFileInputRef.current?.click())}>
+                        <Camera size={16} aria-hidden="true" /> {t('report_take_photo')}
+                      </Button>
+                      <Button variant="secondary" onClick={() => resolvedFileInputRef.current?.click()}>
+                        <ImagePlus size={16} aria-hidden="true" /> {t('cd_select_after')}
+                      </Button>
+                    </div>
+                    {cameraOpen && (
+                      <CameraCapture
+                        onCapture={(file) => { setCameraOpen(false); handleResolvedFileChange({ target: { files: [file] } }) }}
+                        onClose={() => setCameraOpen(false)}
+                        onUnavailable={cameraUnavailable}
+                      />
                     )}
                     <input
                       ref={resolvedFileInputRef}
@@ -337,18 +395,91 @@ export default function ComplaintDetail() {
               </div>
             </section>
 
+            {/* Who reported it, their record, and blocking. */}
             <section className={section}>
-              <h2 className="label">{t('cd_metadata')}</h2>
+              <h2 className="text-[17px] font-semibold">{t('cd_reporter')}</h2>
               <dl className="mt-3 space-y-2 text-sm">
                 <div className="flex justify-between gap-4">
                   <dt className="text-neutral-500">{t('cd_reported')}</dt>
                   <dd className="font-medium tnum">{new Date(complaint.submitted_at).toLocaleDateString(locale)}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-neutral-500">{t('cd_reporter')}</dt>
-                  <dd className="font-medium">{complaint.citizen_name || t('cd_citizen')}</dd>
+                  <dt className="text-neutral-500">{t('cd_citizen')}</dt>
+                  <dd className="truncate font-medium">{complaint.citizen_name || t('common_na')}</dd>
                 </div>
+                {reporter && (
+                  <>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-neutral-500">{t('cd_contact')}</dt>
+                      <dd className="min-w-0 text-end font-medium" dir="ltr">
+                        <div className="truncate">{reporter.email}</div>
+                        <div className="tnum">{reporter.phone}</div>
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-neutral-500">{t('cd_their_reports')}</dt>
+                      <dd className="font-medium tnum">
+                        {t('cd_reports_record', { n: reporter.total_reports, r: reporter.rejected_reports })}
+                      </dd>
+                    </div>
+                  </>
+                )}
               </dl>
+
+              {reporter && reporter.role !== 'admin' && (
+                <div className="mt-4 border-t border-neutral-200 pt-4">
+                  {!reporter.is_active ? (
+                    <>
+                      <p className="flex items-start gap-2 text-sm font-semibold text-danger-700">
+                        <Ban size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                        <span>{t('cd_blocked', { reason: reporter.blocked_reason || '—' })}</span>
+                      </p>
+                      <Button variant="secondary" className="mt-3 w-full" loading={moderating === 'unblock'} onClick={handleUnblock}>
+                        {t('cd_unblock')}
+                      </Button>
+                    </>
+                  ) : blockOpen ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-neutral-700">{t('cd_block_explain')}</p>
+                      <FormField id="cd-block-reason" labelKey="cd_block_reason">
+                        <input id="cd-block-reason" className="field" value={blockReason} onChange={(e) => setBlockReason(e.target.value)} placeholder={t('cd_block_reason_hint')} maxLength={255} />
+                      </FormField>
+                      <div className="flex gap-2">
+                        <Button variant="danger" className="flex-1" disabled={!blockReason.trim()} loading={moderating === 'block'} onClick={handleBlock}>
+                          <Ban size={16} aria-hidden="true" /> {t('cd_block_yes')}
+                        </Button>
+                        <Button variant="secondary" onClick={() => { setBlockOpen(false); setBlockReason('') }}>{t('common_cancel')}</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button variant="secondary" className="w-full !text-danger-700" onClick={() => setBlockOpen(true)}>
+                      <Ban size={16} aria-hidden="true" /> {t('cd_block')}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* Permanent removal sits apart from everyday actions. Rejecting is
+                the normal tool; this is for content that must not be kept. */}
+            <section className={section}>
+              <h2 className="text-[17px] font-semibold text-danger-700">{t('cd_delete_title')}</h2>
+              <p className="mt-1 text-sm text-neutral-600">{t('cd_delete_explain')}</p>
+              {deleteOpen ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm font-semibold text-danger-700">{t('cd_delete_confirm', { id: complaint.complaint_id })}</p>
+                  <div className="flex gap-2">
+                    <Button variant="danger" className="flex-1" loading={moderating === 'delete'} onClick={handleDelete}>
+                      <Trash2 size={16} aria-hidden="true" /> {t('cd_delete_yes')}
+                    </Button>
+                    <Button variant="secondary" onClick={() => setDeleteOpen(false)}>{t('common_cancel')}</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="secondary" className="mt-3 w-full !text-danger-700" onClick={() => setDeleteOpen(true)}>
+                  <Trash2 size={16} aria-hidden="true" /> {t('cd_delete')}
+                </Button>
+              )}
             </section>
           </aside>
         </div>

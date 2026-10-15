@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import IsAdminUser
-from complaints.models import Complaint
+from complaints.models import Complaint, public_complaints
 
 from .reports import build_report_pdf
 
@@ -18,17 +18,19 @@ class DashboardStatsView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        total_complaints = Complaint.objects.count()
-        resolved_count = Complaint.objects.filter(status="resolved").count()
-        in_progress_count = Complaint.objects.filter(status="in_progress").count()
-        critical_count = Complaint.objects.filter(urgency_level="critical").count()
+        # Public numbers: the same complaints the map shows.
+        visible = public_complaints()
+        total_complaints = visible.count()
+        resolved_count = visible.filter(status="resolved").count()
+        in_progress_count = visible.filter(status="in_progress").count()
+        critical_count = visible.filter(urgency_level="critical").count()
 
         resolution_rate = 0.0
         if total_complaints:
             resolution_rate = round((resolved_count / total_complaints) * 100, 2)
 
         hazard_counter = Counter()
-        for complaint in Complaint.objects.all():
+        for complaint in visible:
             hazard_counter.update(complaint.detected_classes or [])
 
         most_common_hazard = hazard_counter.most_common(1)
@@ -37,7 +39,7 @@ class DashboardStatsView(APIView):
         # Shown on the public home page, which used to print a made-up "2.4 days".
         samples = [
             c.resolution_time_days
-            for c in Complaint.objects.filter(status="resolved", resolved_at__isnull=False)
+            for c in visible.filter(status="resolved", resolved_at__isnull=False)
             if c.resolution_time_days is not None
         ]
         avg_resolution_days = round(sum(samples) / len(samples), 1) if samples else None
@@ -61,7 +63,7 @@ class WardAnalyticsView(APIView):
 
     def get(self, request):
         ward_stats = {}
-        for complaint in Complaint.objects.all():
+        for complaint in public_complaints():
             ward_name = complaint.ward or "Unknown"
             record = ward_stats.setdefault(
                 ward_name,
@@ -122,7 +124,7 @@ class HazardBreakdownView(APIView):
 
     def get(self, request):
         hazard_counter = Counter()
-        for complaint in Complaint.objects.all():
+        for complaint in public_complaints():
             hazard_counter.update(complaint.detected_classes or [])
 
         return Response(

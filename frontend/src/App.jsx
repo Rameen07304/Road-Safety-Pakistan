@@ -63,6 +63,7 @@ function CitizenRoute({ children }) {
 // Route guard: admin only
 function AdminRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return (
     <div className="min-h-screen flex items-center
                     justify-center">
@@ -71,20 +72,26 @@ function AdminRoute({ children }) {
                       border-primary"></div>
     </div>
   )
-  if (!user) return <Navigate to="/login" replace />
-  if (user.role !== 'admin') 
-    return <Navigate to="/" replace />
+  // Not signed in: log in, then come back here. A citizen goes to their own
+  // dashboard rather than the home page.
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (user.role !== 'admin')
+    return <Navigate to="/dashboard" replace />
   return children
 }
 
-// Route guard: redirect if already logged in
+// Route guard for /login and /register: a signed-in person goes to the page
+// that sent them to log in, otherwise to their own dashboard. This is the only
+// post-login redirect; it fires as soon as login() sets the user.
 function GuestRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return null
   if (user) {
-    return user.role === 'admin'
-      ? <Navigate to="/admin/dashboard" replace />
-      : <Navigate to="/" replace />
+    const home = user.role === 'admin' ? '/admin/dashboard' : '/dashboard'
+    const from = location.state?.from
+    const allowed = from && (user.role === 'admin' || !from.startsWith('/admin'))
+    return <Navigate to={allowed ? from : home} replace />
   }
   return children
 }
