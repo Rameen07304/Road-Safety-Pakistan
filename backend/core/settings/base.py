@@ -163,7 +163,9 @@ SIMPLE_JWT = {
 # backend is needed. The name is used to accept only this account's URLs.
 CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME")
 
-ADMIN_URL = os.environ.get("ADMIN_URL", "admin-rsp-secure/")
+# A host dashboard may save an optional value as an empty string; "or" treats
+# that as unset. A blank ADMIN_URL would mount the admin at the site root.
+ADMIN_URL = (os.environ.get("ADMIN_URL") or "admin-rsp-secure/").strip("/") + "/"
 ML_MODEL_PATH = os.environ.get("ML_MODEL_PATH", "ml_models/best.pt")
 
 cors_origins = os.environ.get(
@@ -185,8 +187,8 @@ AUTH_COOKIE_SECURE = os.environ.get("AUTH_COOKIE_SECURE", "False").lower() in ("
 AUTH_COOKIE_SAMESITE = os.environ.get("AUTH_COOKIE_SAMESITE", "Lax")
 
 # Used to build password-reset links in emails.
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Road Safety Pakistan <no-reply@roadsafety.pk>")
+FRONTEND_URL = (os.environ.get("FRONTEND_URL") or "http://localhost:5173").rstrip("/")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL") or "Road Safety Pakistan <no-reply@roadsafety.pk>"
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 1 day
 
 STATIC_URL = "/static/"
