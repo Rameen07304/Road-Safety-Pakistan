@@ -115,9 +115,9 @@ function MapClickHandler({ onMapClick }) {
   return null
 }
 
-// urgency_score is a 0-100 integer (see backend/detection/urgency.py); leaflet.heat
-// expects a weight roughly in the 0-1 range, so we normalize by dividing by 100.
-const MAX_URGENCY_SCORE = 100
+// Heat per report, by danger level: even a minor problem must show. (Raw
+// urgency scores sit near 0.1 for minor ones, which drew next to nothing.)
+const HEAT_WEIGHT = { low: 0.4, medium: 0.6, high: 0.8, critical: 1 }
 
 function getHeatmapPoints(complaints) {
   const points = []
@@ -125,12 +125,7 @@ function getHeatmapPoints(complaints) {
     const lat = Number(complaint.latitude ?? complaint.lat)
     const lng = Number(complaint.longitude ?? complaint.lng)
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
-
-    const rawScore = Number(complaint.urgency_score)
-    const score = Number.isFinite(rawScore) ? rawScore : 0
-    const intensity = Math.max(0, Math.min(score, MAX_URGENCY_SCORE)) / MAX_URGENCY_SCORE
-
-    points.push([lat, lng, intensity])
+    points.push([lat, lng, HEAT_WEIGHT[levelOf(complaint)]])
   })
   return points
 }
@@ -142,10 +137,13 @@ function HeatmapLayer({ complaints }) {
   useEffect(() => {
     const points = getHeatmapPoints(complaints)
     const layer = L.heatLayer(points, {
-      radius: 28,
-      blur: 22,
-      maxZoom: 17,
+      radius: 32,
+      blur: 24,
+      // leaflet.heat halves every point per zoom level below maxZoom; at 17 a
+      // city view (zoom 12-13) drew at 1/16 strength, i.e. invisibly.
+      maxZoom: 11,
       max: 1,
+      minOpacity: 0.35,
       gradient: {
         0.2: urgencyColors.low,
         0.45: urgencyColors.medium,
@@ -336,7 +334,7 @@ export default function LiveMap() {
 
             <p className="mt-2 text-[15px] text-neutral-800">
               <span className="font-semibold tnum">{t('map_summary', { n: complaints.length, pct: resolutionRate })}</span>
-              <span className="text-neutral-600"> · {t('map_hint')}</span>
+              {viewMode === 'markers' && <span className="text-neutral-600"> · {t('map_hint')}</span>}
             </p>
 
             <fieldset className="mt-3">
@@ -532,10 +530,19 @@ export default function LiveMap() {
               )
             })()}
 
-            {viewMode === 'markers' && (
+            {viewMode === 'markers' ? (
               <p className="absolute bottom-3 start-3 z-20 flex max-w-[300px] items-center gap-2.5 border border-neutral-300 bg-white px-3 py-2 text-[13px] leading-snug text-neutral-800 shadow-elevated">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-4 border-neutral-500 bg-white text-sm font-extrabold" aria-hidden="true">3</span>
                 {t('map_cluster_note')}
+              </p>
+            ) : (
+              <p className="absolute bottom-3 start-3 z-20 flex max-w-[300px] items-center gap-2.5 border border-neutral-300 bg-white px-3 py-2 text-[13px] leading-snug text-neutral-800 shadow-elevated">
+                <span
+                  className="h-8 w-8 shrink-0 rounded-full"
+                  style={{ background: `radial-gradient(circle, ${urgencyColors.critical} 0%, ${urgencyColors.high} 35%, ${urgencyColors.medium} 60%, ${urgencyColors.low} 85%, transparent 100%)` }}
+                  aria-hidden="true"
+                />
+                {t('map_heat_note')}
               </p>
             )}
           </section>

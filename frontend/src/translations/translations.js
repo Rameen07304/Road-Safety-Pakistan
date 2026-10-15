@@ -324,6 +324,7 @@ export const translations = {
   map_hazard_type: { en: 'Type of problem', ur: 'مسئلے کی قسم' },
   map_danger_level: { en: 'How dangerous', ur: 'کتنا خطرناک' },
   map_hint: { en: 'Tap a mark on the map to see the problem.', ur: 'مسئلہ دیکھنے کے لیے نقشے پر کسی نشان کو ٹیپ کریں۔' },
+  map_heat_note: { en: 'Red areas have more or more dangerous problems. Green areas have a few minor ones.', ur: 'سرخ علاقوں میں زیادہ یا زیادہ خطرناک مسائل ہیں۔ سبز علاقوں میں چند معمولی مسائل ہیں۔' },
   map_cluster_note: { en: 'A circle with a number means several problems close together. Tap it to zoom in.', ur: 'نمبر والا دائرہ یعنی قریب قریب کئی مسائل۔ قریب سے دیکھنے کے لیے اسے ٹیپ کریں۔' },
   map_recent_reports: { en: 'Latest problems', ur: 'تازہ ترین مسائل' },
   map_no_reports_match: { en: 'Nothing to show. Turn on more choices above.', ur: 'دکھانے کو کچھ نہیں۔ اوپر مزید انتخاب آن کریں۔' },

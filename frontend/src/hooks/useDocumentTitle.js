@@ -18,7 +18,7 @@ export default function useDocumentTitle(titleKey) {
 
   useEffect(() => {
     const previous = document.title
-    document.title = title ? `${title} — ${suffix}` : suffix
+    document.title = title ? `${title} | ${suffix}` : suffix
     return () => {
       document.title = previous
     }
